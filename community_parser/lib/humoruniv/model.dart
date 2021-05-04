@@ -4,6 +4,26 @@ import 'package:community_parser/core/site_meta.dart';
 
 class HumorunivSiteMeta extends SiteMeta {
   @override
+  bool isErrorListPage(Document document) {
+    if (document == null) {
+      return true;
+    }
+
+    final errorReg = RegExp(r'^INTERNAL ERROR', caseSensitive: false);
+    if (errorReg.hasMatch(document.body.text) == true) {
+      return true;
+    }
+
+    return false;
+  }
+
+  @override
+  bool isErrorPostPage(Document document) {
+    var titleMeta = document.querySelector('meta[name=title]');
+    return titleMeta == null ? true : false;
+  }
+
+  @override
   String getListUrl({Map<String, String> query, int pageIndex}) {
     var url = 'http://web.humoruniv.com/board/humor/list.html?pg=$pageIndex';
 

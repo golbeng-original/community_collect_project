@@ -8,4 +8,7 @@ abstract class SiteMeta {
   Element getPostItemFromBodyRootQuery(Document document);
   Element getPostRootQuery(Document document);
   List<Element> getCommentListRootQuery(Document document);
+
+  bool isErrorListPage(Document document);
+  bool isErrorPostPage(Document document);
 }

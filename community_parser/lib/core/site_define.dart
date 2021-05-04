@@ -53,6 +53,10 @@ List<Element> getPagePostListElements({
     return <Element>[];
   }
 
+  if (_siteMetaMap[siteType].isErrorListPage(document) == true) {
+    return <Element>[];
+  }
+
   return _siteMetaMap[siteType].getPostItemListRootQuery(document);
 }
 
@@ -62,6 +66,10 @@ Element getPostAuthorElement({
   @required Document document,
 }) {
   if (_siteMetaMap.containsKey(siteType) == false) {
+    return null;
+  }
+
+  if (_siteMetaMap[siteType].isErrorPostPage(document) == true) {
     return null;
   }
 
@@ -77,6 +85,10 @@ Element getPostRootElement(
     return null;
   }
 
+  if (_siteMetaMap[siteType].isErrorPostPage(document) == true) {
+    return null;
+  }
+
   return _siteMetaMap[siteType].getPostRootQuery(document);
 }
 
@@ -86,6 +98,10 @@ List<Element> getPostCommentListElements({
   @required Document document,
 }) {
   if (_siteMetaMap.containsKey(siteType) == false) {
+    return <Element>[];
+  }
+
+  if (_siteMetaMap[siteType].isErrorPostPage(document) == true) {
     return <Element>[];
   }
 
