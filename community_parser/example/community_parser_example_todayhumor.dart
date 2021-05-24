@@ -1,8 +1,10 @@
+import 'package:html/parser.dart' as html_parser;
+
 import 'package:community_parser/community_parser.dart';
 
 Future _parsePostListItems<T extends PostListItemParser>() async {
-  var list =
-      await PostListParser.parse<T>(query: {'table': 'pds'}, pageIndex: 1);
+  var list = await PostListParser.parse<T>(
+      query: {'table': 'humordata'}, pageIndex: 0);
 
   print('list count = ${list.length}');
 
@@ -23,15 +25,11 @@ Future _parsePostListItems<T extends PostListItemParser>() async {
 }
 
 Future _parsePostListItemFromBody<T extends PostListItemParser>() async {
-  //var targetUrl = 'read.html?table=pds&pg=0&number=1057811';
-  //var targetUrl = 'read.html?table=pds&number=1057769';
-  //var targetUrl = 'read.html?table=pds&number=1057784';
-  //var targetUrl = 'read.html?table=pds&number=1056639';
-  var targetPostId = '1056639';
-  var targetQuery = {'table': 'pds'};
+  var query = {'table': 'humordata'};
+  var targetUrl = '1905601';
 
-  var result = await PostListParser.parseFromPostBody<T>(targetPostId,
-      query: targetQuery);
+  var result =
+      await PostListParser.parseFromPostBody<T>(targetUrl, query: query);
   if (result == null) {
     return;
   }
@@ -50,45 +48,53 @@ Future _parsePostListItemFromBody<T extends PostListItemParser>() async {
 }
 
 Future _parserPostBody<T extends PostElement>() async {
-  // case 2. parsing
-  //var targetBodyUrl = 'read.html?table=pds&pg=0&number=1055255';
+  var query = {'table': 'humordata'};
 
-  // case 1.1. parsing
-  //var targetBodyUrl = 'read.html?table=pds&pg=4&number=1055187';
+  // case 1. 그림 + 글
+  //var targetBodyUrl = '1905579';
+  //var targetBodyUrl = '1905594';
+  var targetBodyUrl = '1905433';
 
-  // case 1.2. parsing
-  //var targetBodyUrl = 'read.html?table=pds&pg=1&number=1055251';
+  // case 2. 단순 글 blockquote 태그 있음..
+  //var targetBodyUrl = '325043232';
 
-  // case 3.
-  //var targetBodyUrl = 'read.html?table=pds&pg=0&number=1055781';
-  //var targetBodyUrl = 'read.html?table=pds&pg=0&number=1056309';
-  //var targetBodyUrl = 'read.html?table=pds&pg=0&number=1055774';
+  // case 3. youtube 첨부 (<p>youtube 주소만 표시??</p>)
+  //var targetBodyUrl = '325087309';
+  //var targetBodyUrl = '325035841';
 
-  //var targetBodyUrl = 'read.html?table=pds&pg=0&number=1057811';
+  // case 4. youtube 첨부
+  //var targetBodyUrl = '325076082';
+  //var targetBodyUrl = '324912392';
+  //var targetBodyUrl = '324926766';
 
-  //var targetBodyUrl = 'read.html?table=pds&pg=2&number=1057489';
+  // case 5. link
+  //var targetBodyUrl = '325008443';
 
-  var targetPostId = '1057489';
-  var targetQuery = {'table': 'pds'};
-
-  var result = await PostParser.parse<T>(targetPostId, query: targetQuery);
+  var result = await PostParser.parse<T>(
+    targetBodyUrl,
+    query: query,
+  );
   result?.printContent();
 }
 
 Future _parsePostComments<T extends PostCommentItem>() async {
-  //var targetBodyUrl = 'read.html?table=pds&pg=0&number=1057811';
-  var targetPostId = '1064687';
-  var targetQuery = {'table': 'pds'};
+  var query = {'table': 'humordata'};
+  var targetPostId = '1905599';
 
-  var result = await PostCommentParser.parseForSingle<T>(targetPostId,
-      query: targetQuery);
+  var sw = Stopwatch();
+  sw.start();
+
+  var result = await PostCommentParser.parseForPage<T>(
+    targetPostId,
+    query: query,
+  );
 
   print('comment count = ${result.length}');
 
   var printFunc = (PostCommentItem commentItem) {
     print('reComment = ${commentItem.reComment}');
     print('authorIconUrl = ${commentItem.authorIconUrl}');
-    print('reComment = ${commentItem.authorName}');
+    print('authorName = ${commentItem.authorName}');
     print('commentGoodCount = ${commentItem.commentGoodCount}');
     print('commentBadCount = ${commentItem.commentBadCount}');
     print('commentWriteDatetime = ${commentItem.commentWriteDatetime}');
@@ -100,23 +106,25 @@ Future _parsePostComments<T extends PostCommentItem>() async {
     printFunc(e);
     print('================');
   }
+
+  print('${sw.elapsedMilliseconds} ms');
 }
 
-void exampleHumorunivPrint() async {
+void exampleTodayHumorPrint() async {
   /*
   print('> parsePostListItems ======================');
-  await _parsePostListItems<HumorunivPostListItemParser>();
+  await _parsePostListItems<TodayHumorPostListItemParser>();
   print('===========================================');
 
   print('> parsePostListItemFromBody ===============');
-  await _parsePostListItemFromBody<HumorunivPostListItemFromBodyParser>();
+  await _parsePostListItemFromBody<TodayHumorPostListItemFromBodyParser>();
   print('===========================================');
 
   print('> parserPostBody ==========================');
-  await _parserPostBody<HumorunivPostElement>();
+  await _parserPostBody<TodayHumorPostElement>();
   print('===========================================');
   */
   print('> parsePostComments =======================');
-  await _parsePostComments<HumorunivPostCommentItem>();
+  await _parsePostComments<TodayHumorPostCommentItem>();
   print('===========================================');
 }

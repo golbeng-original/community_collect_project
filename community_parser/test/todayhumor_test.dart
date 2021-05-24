@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:html/parser.dart' as http_parser;
@@ -7,17 +9,15 @@ import 'package:community_parser/util/get_document.dart';
 import 'package:community_parser/core/site_define.dart' as site_define;
 import 'package:html/dom.dart';
 
-//import '../lib/community_parser.dart';
-
 void main() {
-  group('humoruniv siteMeta test group', () {
-    var siteMeta = HumorunivSiteMeta();
+  group('todayhumor siteMeta test group', () {
+    var siteMeta = TodayHumorSiteMeta();
 
     var testListPageIndex = 0;
-    var testListPageQuery = {'table': 'pds'};
+    var testListPageQuery = {'table': 'humordata'};
     var testListWrongPageQuery = {'table': 'xxx'};
-    var testPostId = '1057811';
-    var testWrongPostId = '1057811234234xx';
+    var testPostId = '1905117';
+    var testWrongPostId = '19051171xxvx';
 
     Future<Document> _getDocunemt(Uri uri) async {
       final documentResult = await getDocument(uri);
@@ -194,12 +194,18 @@ void main() {
     });
 
     test('getCommentListRootQuery', () async {
-      final postBodyUrl =
-          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+      final commentUrl =
+          siteMeta.getSpecificCommentUrl(testPostId, query: testListPageQuery);
 
-      final uri = Uri.parse(postBodyUrl);
-      final document = await _getDocunemt(uri);
+      final uri = Uri.parse(commentUrl);
+      final documentResult = await getDocument(uri);
+      expect(
+        documentResult.statueType,
+        StatusType.OK,
+        reason: '$commentUrl is not ok',
+      );
 
+      var document = siteMeta.getCommentDocument(documentResult.documentBody);
       expect(
         siteMeta.getCommentListRootQuery(document),
         allOf(
@@ -237,43 +243,44 @@ void main() {
     });
   });
 
-  group('humoruniv parse test group', () {
-    final testListPageQuery = {'table': 'pds'};
+  group('todayHumor parse test group', () {
+    final testListPageQuery = {'table': 'humordata'};
     final testListWroungPageQuery = {'table': 'xxx'};
 
-    final testPostId = '1059956';
-    final testWrongPostId = '1059956xxx23';
+    final testPostBodyUrl = '1905579';
+    final testPostBodyWrongUrl = '1905579xxx';
 
     test('getSiteType', () {
       expect(
-        site_define.getSiteType<HumorunivPostListItemParser>(),
-        site_define.SiteType.humoruniv,
-        reason: 'find SiteType is wrong [HumorunivPostListItemParser]',
+        site_define.getSiteType<TodayHumorPostListItemParser>(),
+        site_define.SiteType.todayHumor,
+        reason: 'find SiteType is wrong [TodayHumorPostListItemParser]',
       );
 
       expect(
-        site_define.getSiteType<HumorunivPostListItemFromBodyParser>(),
-        site_define.SiteType.humoruniv,
-        reason: 'find SiteType is wrong [HumorunivPostListItemFromBodyParser]',
+        site_define.getSiteType<TodayHumorPostListItemFromBodyParser>(),
+        site_define.SiteType.todayHumor,
+        reason: 'find SiteType is wrong [TodayHumorPostListItemFromBodyParser]',
       );
 
       expect(
-        site_define.getSiteType<HumorunivPostElement>(),
-        site_define.SiteType.humoruniv,
-        reason: 'find SiteType is wrong [HumorunivPostElement]',
+        site_define.getSiteType<TodayHumorPostElement>(),
+        site_define.SiteType.todayHumor,
+        reason: 'find SiteType is wrong [TodayHumorPostElement]',
       );
 
       expect(
-        site_define.getSiteType<HumorunivPostCommentItem>(),
-        site_define.SiteType.humoruniv,
-        reason: 'find SiteType is wrong [HumorunivPostComentItem]',
+        site_define.getSiteType<TodayHumorPostCommentItem>(),
+        site_define.SiteType.todayHumor,
+        reason: 'find SiteType is wrong [TodayHumorPostElement]',
       );
     });
 
     test('PostListParser success test', () async {
       List<PostListItem> postListItems;
       try {
-        postListItems = await PostListParser.parse<HumorunivPostListItemParser>(
+        postListItems =
+            await PostListParser.parse<TodayHumorPostListItemParser>(
           pageIndex: 0,
           query: testListPageQuery,
         );
@@ -316,7 +323,7 @@ void main() {
 
     test('postListParser fail test', () async {
       expect(
-        PostListParser.parse<HumorunivPostListItemParser>(
+        PostListParser.parse<TodayHumorPostListItemParser>(
             pageIndex: 0, query: testListWroungPageQuery),
         throwsA(isA<Error>()),
         reason: 'wrong page query is wrong',
@@ -327,7 +334,7 @@ void main() {
       PostListItem postListItem;
       try {
         postListItem = await PostListParser.parseFromPostBody<
-                HumorunivPostListItemFromBodyParser>(testPostId,
+                TodayHumorPostListItemFromBodyParser>(testPostBodyUrl,
             query: testListPageQuery);
 
         expect(
@@ -343,16 +350,16 @@ void main() {
         );
       }
 
-      expect(postListItem.authorIconUrl, isNotEmpty);
+      expect(postListItem.postId, isNotEmpty);
       expect(postListItem.authorName, isNotEmpty);
       expect(postListItem.subject, isNotEmpty);
     });
 
     test('PostListParser from body fail test', () async {
       expect(
-        PostListParser.parseFromPostBody<HumorunivPostListItemFromBodyParser>(
-          testWrongPostId,
-          query: testListPageQuery,
+        PostListParser.parseFromPostBody<TodayHumorPostListItemFromBodyParser>(
+          testPostBodyWrongUrl,
+          query: testListWroungPageQuery,
         ),
         throwsA(isA<Error>()),
         reason: 'PostListParser.parseFromPostBody not throws Error',
@@ -360,10 +367,10 @@ void main() {
     });
 
     test('PostParser success test', () async {
-      HumorunivPostElement element;
+      TodayHumorPostElement element;
       try {
-        element = await PostParser.parse<HumorunivPostElement>(
-          testPostId,
+        element = await PostParser.parse<TodayHumorPostElement>(
+          testPostBodyUrl,
           query: testListPageQuery,
         );
 
@@ -385,10 +392,7 @@ void main() {
 
     test('PostParser fail test', () {
       expect(
-        PostParser.parse<HumorunivPostElement>(
-          testWrongPostId,
-          query: testListPageQuery,
-        ),
+        PostParser.parse<TodayHumorPostElement>(testPostBodyWrongUrl),
         throwsA(isA<Error>()),
         reason: 'PostParser.parse not throws Excpetion or Error',
       );
@@ -397,10 +401,9 @@ void main() {
     test('PostCommentParser success test', () async {
       try {
         final postCommentItems =
-            await PostCommentParser.parseForSingle<HumorunivPostCommentItem>(
-          testPostId,
-          query: testListPageQuery,
-        );
+            await PostCommentParser.parseForSingle<TodayHumorPostCommentItem>(
+                testPostBodyUrl,
+                query: testListPageQuery);
 
         expect(
           postCommentItems,
@@ -416,10 +419,11 @@ void main() {
             isNotEmpty,
             reason: 'authorName is empty index = $index',
           );
+
           expect(
             postCommentItem.commentContent.isExistContent(),
             true,
-            reason: 'commentContent is empty index = $index',
+            reason: 'authorIconUrl is empty index = $index',
           );
         }
       } catch (e) {
@@ -429,10 +433,8 @@ void main() {
 
     test('PostCommentParser fail test', () async {
       expect(
-        PostCommentParser.parseForSingle<HumorunivPostCommentItem>(
-          testWrongPostId,
-          query: testListPageQuery,
-        ),
+        PostCommentParser.parseForSingle<TodayHumorPostCommentItem>(
+            testPostBodyWrongUrl),
         throwsA(isA<Error>()),
         reason: 'PostCommentParser.parse not throws Error',
       );

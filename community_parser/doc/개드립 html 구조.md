@@ -14,7 +14,16 @@ URL : [https://www.dogdrip.net/](https://www.dogdrip.net/)
 [예시 링크 : https://www.clien.net/service/board/park/16094494?od=T31&po=7&category=0&groupCd=](https://www.clien.net/service/board/park/16094494?od=T31&po=7&category=0&groupCd=)<br>
 <br>
 댓글에 링크 <br>
-[예시 링크 : https://www.clien.net/service/board/park/16094473?od=T31&po=7&category=0&groupCd=](https://www.clien.net/service/board/park/16094473?od=T31&po=7&category=0&groupCd=)
+[예시 링크 : https://www.clien.net/service/board/park/16094473?od=T31&po=7&category=0&groupCd=](https://www.clien.net/service/board/park/16094473?od=T31&po=7&category=0&groupCd=)<br>
+<br>
+댓글 페이지 존재
+- url 형식 : https://www.dogdrip.net/index.php?document_srl=324166816&cpage=1
+- cpage : [1~x]로 페이지 댓글 조회 필요<br>
+<br>
+
+blockquote 태그 처리 필요
+- >이런식으로 표현 해야 한다.
+
 
 메뉴 목록
 --------
@@ -184,8 +193,13 @@ Url 구조
                 <div class="ed article-wrapper inner-container">
                     <div class="ed">
                         <div class="ed article-head margin-bottom-large">
+                            <h4 class="ed margin-bottom-xsmall">
+                                <a href="게시물 주소">
+                                    글제목
+                                </a>
+                            </h4>
                             <div class="ed flex flex-wrap flex-left flex-middle title-toolbar">
-                                <div clas="ed flex flex-wrap">
+                                <div class="ed flex flex-wrap">
                                     <span class="ed margin-right-small">
                                         <a href="#">
                                             <img src="닉네임 아이콘">
@@ -194,11 +208,43 @@ Url 구조
                                     </span>
                                     <span class="ed margin-right-small">
                                         <span class="ed text-xsmall text-muted">
+                                            ...
+                                        </span>
+                                        <span class="ed text-xsmall text-muted">
                                             X 분 전
                                         </span>
                                     </span>
                                 </div>
                             </div>
+                        </div>
+                        <div class="ed clearfix margin-vertical-large">
+                            <div class="article_1">
+                                <div class="document_324176860_0 xe_content">
+                                    <div class="wgtRv addon_addvote">
+                                        <span class="btnRv btnRo">
+                                            <button>
+                                                <span class="num" id="document_voted_count">
+                                                추천 수
+                                                </span>
+                                            </button>
+                                        </span>
+                                        <span>
+                                            <button>
+                                                <span class="num" id="document_blamed_count">
+                                                싫어요 수
+                                                </span>
+                                            </button>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="comment_top">
+                        <div class="ed comment" id="commentbox">
+                            <h4 class="ed comment-header">
+                                " 41개의 댓글"
+                            </h4>
                         </div>
                     </div>
                 </div>
@@ -255,6 +301,14 @@ Url 구조
                 <div class="ed article-wrapper inner-container">
                     <div class="comment_top">
                         <div class="ed comment" id="commentbox">
+                            <div class="ed pagination-container">
+                                <div class="ed pagination pagewide">
+                                    <ul class="ed pagination pagewide">
+                                        <!-- li 수가 페이지 수-->
+                                        <li></li>
+                                    </ul>
+                                </div>
+                            </div>
                             <div class="ed comment-list">
                                 <!-- 1단 댓글-->
                                 <div class="ed comment-item clearfix" id="comment_([0-9]+)">
@@ -342,6 +396,4 @@ Url 구조
         </div>
     </div>
 </main>
-```
-
-display:inline-block;background-image:url(./dvs/c/20/05/02/fb486a61f565ec06260b67e44714689e.jpg);background-size:cover;background-position:50% 50%;width:100px !important;height:100px !important;border-radius:3px;
+``'

@@ -2,6 +2,12 @@
 ==========
 URL : [http://www.todayhumor.co.kr/](http://www.todayhumor.co.kr/)
 
+**특이사항**
+<br>
+- 댓글 가져오는 부분이 ajax처리가 되어있어서 특별한 처리를 해야한다.<br>
+- url 형식 : 'http://www.todayhumor.co.kr/board/ajax_memo_list.php?parent_table={table}&parent_id={postId}&get_all_memo=Y'
+
+
 메뉴 목록
 --------
 > http://www.todayhumor.co.kr/board/list.php
@@ -210,8 +216,10 @@ Url 구조
     <div class="memoWrapperDiv" id="memoWrapper([0-9]+)">
         <div class="memoDiv">
             <div class="memoInfoDiv">
-                <img src="닉네임 Icon 경로" />
-                <span class="memoAnonymousname">닉네임</span>
+                <img class="memoMemberIcon" src="닉네임 Icon 경로" />
+                <span class="memoName">
+                    <a>닉네임</a>
+                </span>
                 <span class="memoDate">(작성 시간)</span>
                 <span class="memoAnonymousname">닉네임</span>
                 <span class="memoOkNok">추천 ([0-9]+)</span>

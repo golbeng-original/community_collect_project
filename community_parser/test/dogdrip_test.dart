@@ -7,17 +7,15 @@ import 'package:community_parser/util/get_document.dart';
 import 'package:community_parser/core/site_define.dart' as site_define;
 import 'package:html/dom.dart';
 
-//import '../lib/community_parser.dart';
-
 void main() {
-  group('humoruniv siteMeta test group', () {
-    var siteMeta = HumorunivSiteMeta();
+  group('dogdrip siteMeta test group', () {
+    var siteMeta = DogdripSiteMeta();
 
     var testListPageIndex = 0;
-    var testListPageQuery = {'table': 'pds'};
-    var testListWrongPageQuery = {'table': 'xxx'};
-    var testPostId = '1057811';
-    var testWrongPostId = '1057811234234xx';
+    var testListPageQuery = {'mid': 'dogdrip'};
+    var testListWrongPageQuery = {'mid': 'xxx'};
+    var testPostId = '324178320';
+    var testWrongPostId = '324167939xxvx';
 
     Future<Document> _getDocunemt(Uri uri) async {
       final documentResult = await getDocument(uri);
@@ -75,8 +73,11 @@ void main() {
       var postBodyUrl;
       var document;
       try {
-        postBodyUrl =
-            siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+        postBodyUrl = siteMeta.getPostBodyUrl(
+          testPostId,
+          query: testListPageQuery,
+          needQuestionMark: true,
+        );
         document = await _getDocunemt(Uri.parse(postBodyUrl));
       } catch (e) {
         expect(e, isNull, reason: '_getDocunemt($postBodyUrl) throws Error');
@@ -90,8 +91,11 @@ void main() {
     });
 
     test('isErrorPostPage fail test', () async {
-      final postBodyWrongUrl =
-          siteMeta.getPostBodyUrl(testWrongPostId, query: testListPageQuery);
+      final postBodyWrongUrl = siteMeta.getPostBodyUrl(
+        testWrongPostId,
+        query: testListPageQuery,
+        needQuestionMark: true,
+      );
 
       var document;
       try {
@@ -122,8 +126,11 @@ void main() {
     });
 
     test('getPostBodyUrl test', () async {
-      final postBodyUrl =
-          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+      final postBodyUrl = siteMeta.getPostBodyUrl(
+        testPostId,
+        query: testListPageQuery,
+        needQuestionMark: true,
+      );
 
       final document = await _getDocunemt(Uri.parse(postBodyUrl));
       expect(
@@ -160,8 +167,11 @@ void main() {
     });
 
     test('getPostRootQuery', () async {
-      final postBodyUrl =
-          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+      final postBodyUrl = siteMeta.getPostBodyUrl(
+        testPostId,
+        query: testListPageQuery,
+        needQuestionMark: true,
+      );
 
       final uri = Uri.parse(postBodyUrl);
       final document = await _getDocunemt(uri);
@@ -177,8 +187,11 @@ void main() {
     });
 
     test('getPostItemFromBodyRootQuery', () async {
-      final postBodyUrl =
-          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+      final postBodyUrl = siteMeta.getPostBodyUrl(
+        testPostId,
+        query: testListPageQuery,
+        needQuestionMark: true,
+      );
 
       final uri = Uri.parse(postBodyUrl);
       final document = await _getDocunemt(uri);
@@ -194,8 +207,11 @@ void main() {
     });
 
     test('getCommentListRootQuery', () async {
-      final postBodyUrl =
-          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+      final postBodyUrl = siteMeta.getPostBodyUrl(
+        testPostId,
+        query: testListPageQuery,
+        needQuestionMark: true,
+      );
 
       final uri = Uri.parse(postBodyUrl);
       final document = await _getDocunemt(uri);
@@ -212,8 +228,11 @@ void main() {
     });
 
     test('pageComment test', () async {
-      final postBodyUrl =
-          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+      final postBodyUrl = siteMeta.getPostBodyUrl(
+        testPostId,
+        query: testListPageQuery,
+        needQuestionMark: true,
+      );
 
       if (siteMeta.isExistCommentPage == true) {
         var pageInfoTuple =
@@ -237,43 +256,43 @@ void main() {
     });
   });
 
-  group('humoruniv parse test group', () {
-    final testListPageQuery = {'table': 'pds'};
-    final testListWroungPageQuery = {'table': 'xxx'};
+  group('dogdrip parse test group', () {
+    final testListPageQuery = {'mid': 'dogdrip'};
+    final testListWroungPageQuery = {'mid': 'xxx'};
 
-    final testPostId = '1059956';
-    final testWrongPostId = '1059956xxx23';
+    final testPostId = '325087542';
+    final testWrongPostId = '325087542xxx';
 
     test('getSiteType', () {
       expect(
-        site_define.getSiteType<HumorunivPostListItemParser>(),
-        site_define.SiteType.humoruniv,
-        reason: 'find SiteType is wrong [HumorunivPostListItemParser]',
+        site_define.getSiteType<DogdripPostListItemParser>(),
+        site_define.SiteType.dogdrip,
+        reason: 'find SiteType is wrong [DogdripPostListItemParser]',
       );
 
       expect(
-        site_define.getSiteType<HumorunivPostListItemFromBodyParser>(),
-        site_define.SiteType.humoruniv,
-        reason: 'find SiteType is wrong [HumorunivPostListItemFromBodyParser]',
+        site_define.getSiteType<DogdripPostListItemFromBodyParser>(),
+        site_define.SiteType.dogdrip,
+        reason: 'find SiteType is wrong [DogdripPostListItemFromBodyParser]',
       );
 
       expect(
-        site_define.getSiteType<HumorunivPostElement>(),
-        site_define.SiteType.humoruniv,
-        reason: 'find SiteType is wrong [HumorunivPostElement]',
+        site_define.getSiteType<DogdripPostElement>(),
+        site_define.SiteType.dogdrip,
+        reason: 'find SiteType is wrong [DogdripPostElement]',
       );
 
       expect(
-        site_define.getSiteType<HumorunivPostCommentItem>(),
-        site_define.SiteType.humoruniv,
-        reason: 'find SiteType is wrong [HumorunivPostComentItem]',
+        site_define.getSiteType<DogdripPostCommentItem>(),
+        site_define.SiteType.dogdrip,
+        reason: 'find SiteType is wrong [DogdripPostCommentItem]',
       );
     });
 
     test('PostListParser success test', () async {
       List<PostListItem> postListItems;
       try {
-        postListItems = await PostListParser.parse<HumorunivPostListItemParser>(
+        postListItems = await PostListParser.parse<DogdripPostListItemParser>(
           pageIndex: 0,
           query: testListPageQuery,
         );
@@ -316,7 +335,7 @@ void main() {
 
     test('postListParser fail test', () async {
       expect(
-        PostListParser.parse<HumorunivPostListItemParser>(
+        PostListParser.parse<DogdripPostListItemParser>(
             pageIndex: 0, query: testListWroungPageQuery),
         throwsA(isA<Error>()),
         reason: 'wrong page query is wrong',
@@ -327,8 +346,11 @@ void main() {
       PostListItem postListItem;
       try {
         postListItem = await PostListParser.parseFromPostBody<
-                HumorunivPostListItemFromBodyParser>(testPostId,
-            query: testListPageQuery);
+            DogdripPostListItemFromBodyParser>(
+          testPostId,
+          query: testListPageQuery,
+          needQuestionMark: true,
+        );
 
         expect(
           postListItem,
@@ -350,9 +372,10 @@ void main() {
 
     test('PostListParser from body fail test', () async {
       expect(
-        PostListParser.parseFromPostBody<HumorunivPostListItemFromBodyParser>(
+        PostListParser.parseFromPostBody<DogdripPostListItemFromBodyParser>(
           testWrongPostId,
           query: testListPageQuery,
+          needQuestionMark: true,
         ),
         throwsA(isA<Error>()),
         reason: 'PostListParser.parseFromPostBody not throws Error',
@@ -360,11 +383,12 @@ void main() {
     });
 
     test('PostParser success test', () async {
-      HumorunivPostElement element;
+      DogdripPostElement element;
       try {
-        element = await PostParser.parse<HumorunivPostElement>(
+        element = await PostParser.parse<DogdripPostElement>(
           testPostId,
           query: testListPageQuery,
+          needQuestionMark: true,
         );
 
         expect(
@@ -385,9 +409,10 @@ void main() {
 
     test('PostParser fail test', () {
       expect(
-        PostParser.parse<HumorunivPostElement>(
+        PostParser.parse<DogdripPostElement>(
           testWrongPostId,
           query: testListPageQuery,
+          needQuestionMark: true,
         ),
         throwsA(isA<Error>()),
         reason: 'PostParser.parse not throws Excpetion or Error',
@@ -397,9 +422,10 @@ void main() {
     test('PostCommentParser success test', () async {
       try {
         final postCommentItems =
-            await PostCommentParser.parseForSingle<HumorunivPostCommentItem>(
+            await PostCommentParser.parseForSingle<DogdripPostCommentItem>(
           testPostId,
           query: testListPageQuery,
+          needQuestionMark: true,
         );
 
         expect(
@@ -410,7 +436,6 @@ void main() {
 
         for (var postCommentItem in postCommentItems) {
           final index = postCommentItems.indexOf(postCommentItem);
-
           expect(
             postCommentItem.authorName,
             isNotEmpty,
@@ -429,9 +454,10 @@ void main() {
 
     test('PostCommentParser fail test', () async {
       expect(
-        PostCommentParser.parseForSingle<HumorunivPostCommentItem>(
+        PostCommentParser.parseForSingle<DogdripPostCommentItem>(
           testWrongPostId,
           query: testListPageQuery,
+          needQuestionMark: true,
         ),
         throwsA(isA<Error>()),
         reason: 'PostCommentParser.parse not throws Error',

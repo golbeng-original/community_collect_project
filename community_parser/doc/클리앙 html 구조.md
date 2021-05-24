@@ -219,19 +219,19 @@ Url 구조
 
 게시글 유저 정보Html 구조 정리
 ```html
-<div class="post_title symph_row">
-    <h3 class="post_subject">
-        <a>
-            <span>댓글 수</span>
-        </a>
-    </h3>
-    <div class="post_symph view_symph lSymph02">
-        <span>
-            좋아요 수
-        </span>
+<div class="content_view" id="div_content">
+    <div class="post_title symph_row">
+        <h3 class="post_subject">
+            <a>
+                <span>댓글 수</span>
+            </a>
+        </h3>
+        <div class="post_symph view_symph lSymph02">
+            <span>
+                좋아요 수
+            </span>
+        </div>
     </div>
-</div>
-<div class="content_view">
     <div class="post_info">
         <div class="post_contact">
             <span clas="contact_name">

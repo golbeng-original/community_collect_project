@@ -1,5 +1,8 @@
 import 'package:html/dom.dart';
+import 'package:http/http.dart';
+import 'package:meta/meta.dart';
 import 'package:community_parser/core/parser.dart';
+import 'package:community_parser/core/content_element.dart';
 import 'package:community_parser/core/site_meta.dart';
 
 class HumorunivSiteMeta extends SiteMeta {
@@ -24,26 +27,16 @@ class HumorunivSiteMeta extends SiteMeta {
   }
 
   @override
-  String getListUrl({Map<String, String> query, int pageIndex}) {
-    var url = 'http://web.humoruniv.com/board/humor/list.html?pg=$pageIndex';
-
-    if (query == null) {
-      return url;
-    }
-
-    for (var key in query.keys) {
-      url = url + '&$key=${query[key]}';
-    }
-
-    return url;
+  String getAdjustListUrl(int pageIndex, {String subUrl}) {
+    return 'http://web.humoruniv.com/board/humor/list.html?pg=$pageIndex';
   }
 
   @override
-  String getPostBodyUrl(String postfixUrl) {
-    var url = 'http://web.humoruniv.com/board/humor/';
-
-    url += postfixUrl;
-    return url;
+  String getAdjustPostBodyUrl(
+    String postId, {
+    String subUrl,
+  }) {
+    return 'http://web.humoruniv.com/board/humor/read.html?number=$postId';
   }
 
   @override
@@ -82,6 +75,8 @@ class HumorunivSiteMeta extends SiteMeta {
   }
 }
 
+/// 웃긴대학 게시글 리스트 아이템 Parser
+/// - List에서 List Unit Parsing하기
 class HumorunivPostListItemParser extends PostListItemParser {
   HumorunivPostListItemParser(Document docuemnt) : super(docuemnt);
 
@@ -117,7 +112,7 @@ class HumorunivPostListItemParser extends PostListItemParser {
   }
 
   @override
-  String parseSubjet(Element element) {
+  String parseSubject(Element element) {
     final subjectElement = element.querySelector('td.li_sbj > a');
     final subjectHtml = subjectElement?.innerHtml?.trim() ?? '';
     final subjectSplit = subjectHtml.split('\n');
@@ -220,7 +215,7 @@ class HumorunivPostListItemParser extends PostListItemParser {
   }
 
   @override
-  DateTime parseWriteDateTime(Element element) {
+  String parseWriteDateTime(Element element) {
     var writeDate = '';
     final writeDateElement = element.querySelector('td.li_date > span.w_date');
     if (writeDateElement != null) {
@@ -233,10 +228,12 @@ class HumorunivPostListItemParser extends PostListItemParser {
       writeTime = writeTimeElement.text ?? '';
     }
 
-    return DateTime.parse(writeDate + ' ' + writeTime);
+    return DateTime.parse(writeDate + ' ' + writeTime).toString();
   }
 }
 
+/// 웃긴대학 게시글 리스트 아이템 Parser
+/// - 게시글 본문에서 List Unit 요소 Parsing 하기
 class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   HumorunivPostListItemFromBodyParser(Document docuemnt) : super(docuemnt);
 
@@ -301,7 +298,7 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   }
 
   @override
-  String parseSubjet(Element element) {
+  String parseSubject(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
     final postSubjectElement =
         trElements?.first?.querySelector('td > span#ai_cm_title');
@@ -396,7 +393,7 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   }
 
   @override
-  DateTime parseWriteDateTime(Element element) {
+  String parseWriteDateTime(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
     if (trElements == null || trElements.length < 3) {
       return null;
@@ -406,10 +403,11 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
     final writeDatetimeElement = timeRootElement?.querySelector('span');
     final writeDateTime = writeDatetimeElement?.text?.trim() ?? '';
 
-    return DateTime.tryParse(writeDateTime);
+    return DateTime.tryParse(writeDateTime)?.toString() ?? '';
   }
 }
 
+/// 웃긴대학 게시글 Parsing 결과
 class HumorunivPostElement extends PostElement {
   @override
   PostElement createPostElement({
@@ -500,7 +498,8 @@ class HumorunivPostElement extends PostElement {
   }
 }
 
-class HumorunivPostComentItem extends PostCommentItem {
+/// 웃긴대학 Comment Unit Parsing하기
+class HumorunivPostCommentItem extends PostCommentItem {
   @override
   bool parseReComment(Element element) {
     return element.querySelector('td > div#list_best_box > img') != null
@@ -521,61 +520,6 @@ class HumorunivPostComentItem extends PostCommentItem {
   }
 
   @override
-  String parseCommentImgUrl(Element element) {
-    var commentImgUrl = '';
-
-    // case 1. 동영상인지 체크
-    var commentImgRootElement =
-        element.querySelector('td div.comment_img_div > a');
-
-    if (commentImgRootElement != null) {
-      final hrefSource = commentImgRootElement.attributes['href'] ?? '';
-
-      final regExp = RegExp(r"'(?<url>.+?)'", caseSensitive: false);
-      final matchVideoUrls = regExp.allMatches(hrefSource);
-      for (var match in matchVideoUrls) {
-        final findVideUrl = match.namedGroup('url');
-        if (findVideUrl.toLowerCase().endsWith('.mp4') == true) {
-          commentImgUrl = findVideUrl;
-          break;
-        }
-      }
-    }
-
-    if (commentImgUrl.isNotEmpty) {
-      return commentImgUrl;
-    }
-
-    // case 1. 이미지인지 체크
-    commentImgRootElement =
-        element.querySelector('td div.comment_img_div > img');
-
-    if (commentImgRootElement != null) {
-      commentImgUrl = commentImgRootElement.attributes['src'] ?? '';
-    }
-
-    if (commentImgUrl.isNotEmpty) {
-      return commentImgUrl;
-    }
-
-    // case 2. 이미지인지 체크
-    commentImgRootElement =
-        element.querySelector('td div.comment_img_origin > a > img');
-    if (commentImgRootElement != null) {
-      commentImgUrl = commentImgRootElement.attributes['src'] ?? '';
-    }
-
-    return commentImgUrl;
-  }
-
-  @override
-  String parseCommentText(Element element) {
-    final commentTextElement =
-        element.querySelector('td > div > span.cmt_list');
-    return commentTextElement?.text?.trim() ?? '';
-  }
-
-  @override
   int parseCommentGoodCount(Element element) {
     final commentGoodCountElement =
         element.querySelector('td > span.list_ok > span');
@@ -584,18 +528,138 @@ class HumorunivPostComentItem extends PostCommentItem {
   }
 
   @override
-  int parseComentBadCount(Element element) {
+  int parseCommentBadCount(Element element) {
     final commentBadCountElement = element.querySelector('td > span.list_no');
     final commentBadCount = commentBadCountElement?.text ?? '';
     return int.tryParse(commentBadCount) ?? 0;
   }
 
   @override
-  DateTime parseCommentWriteDatetime(Element element) {
+  String parseCommentWriteDatetime(Element element) {
     final commentWriteDatetimeElement =
         element.querySelector('td > span.list_date');
     final commentWriteDatetime =
         commentWriteDatetimeElement?.text?.trim() ?? '';
-    return DateTime.tryParse(commentWriteDatetime);
+    return DateTime.tryParse(commentWriteDatetime)?.toString() ?? '';
+  }
+
+  @override
+  CommentContent createCommentContent() {
+    return HumorunivCommentContent();
+  }
+
+  @override
+  Element getCommentContentElement(Element element) {
+    final tdElements = element.querySelectorAll('td');
+    if (tdElements.length < 3) {
+      return null;
+    }
+    return tdElements[2];
+  }
+}
+
+class HumorunivCommentContent extends CommentContent {
+  @override
+  CommentContent createPostElement({PostContentType contentType}) {
+    return HumorunivCommentContent()..setContentData(contentType: contentType);
+  }
+
+  String _findVideoUrl(Element element) {
+    var videoElement = element.querySelector('> a');
+    if (videoElement == null) {
+      return '';
+    }
+
+    final hrefSource = videoElement.attributes['href'] ?? '';
+
+    final regExp = RegExp(r"'(?<url>.+?)'", caseSensitive: false);
+    final matchVideoUrls = regExp.allMatches(hrefSource);
+    for (var match in matchVideoUrls) {
+      final findVideUrl = match.namedGroup('url');
+      if (findVideUrl.toLowerCase().endsWith('.mp4') == true) {
+        return findVideUrl;
+      }
+    }
+    return '';
+  }
+
+  @override
+  PrefixParseResult prefixParseDefaultTag(String tag, Element targetElement) {
+    if (targetElement.classes.contains('comment_img_div')) {
+      // case 1. 동영상인지 체크
+      final videoUrl = _findVideoUrl(targetElement);
+      if (videoUrl != null && videoUrl.isNotEmpty == true) {
+        setContentData(
+          tag: 'video',
+          contentType: PostContentType.video,
+          content: videoUrl,
+        );
+        return PrefixParseResult.skip_child_parse;
+      }
+    }
+
+    return super.prefixParseDefaultTag(tag, targetElement);
+  }
+
+  String _findAudioUrl(String onclickSource) {
+    if (onclickSource == null) {
+      return '';
+    }
+
+    final sourceRegexp =
+        RegExp(r'^javascript:comment_mp3\([0-9]+,(?<url>.+)\);$');
+
+    final matched = sourceRegexp.firstMatch(onclickSource);
+    if (matched == null) {
+      return '';
+    }
+
+    var audioUrlSource = matched.namedGroup('url');
+    final alphabetRegexp = RegExp(r'"(?<alphabet>.?)\+?"');
+    final alphabetMaches = alphabetRegexp.allMatches(audioUrlSource);
+    if (alphabetMaches == null) {
+      return '';
+    }
+
+    var audioUrl = '';
+    for (var alphabetMache in alphabetMaches) {
+      audioUrl += alphabetMache.namedGroup('alphabet');
+    }
+    return audioUrl;
+  }
+
+  @override
+  PrefixParseResult prefixParseImgTag(Element targetElement) {
+    var onclickSource = targetElement.attributes['onclick'] ?? '';
+    var audioUrl = _findAudioUrl(onclickSource);
+    if (audioUrl.isNotEmpty == true) {
+      setContentData(
+          tag: 'audio', contentType: PostContentType.audio, content: audioUrl);
+      return PrefixParseResult.skip_child_parse;
+    }
+
+    return super.prefixParseImgTag(targetElement);
+  }
+
+  @override
+  void postfixRoot(CommentContent rootCommentContent) {
+    final exist = rootCommentContent.isExistContentType(
+      contentType: PostContentType.audio,
+    );
+
+    if (exist == false) {
+      return;
+    }
+
+    var contents = rootCommentContent
+        .findCommentContentAllFromContentType(PostContentType.text);
+
+    final targetRegexp = RegExp(r'원본용량.?:.?([0-9]+)KB');
+    for (var content in contents) {
+      if (targetRegexp.hasMatch(content.content) == true) {
+        content.removeSelf();
+        break;
+      }
+    }
   }
 }

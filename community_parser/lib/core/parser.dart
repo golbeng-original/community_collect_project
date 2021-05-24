@@ -1,41 +1,40 @@
 import 'package:html/dom.dart';
 import 'package:meta/meta.dart';
+import 'package:tuple/tuple.dart';
 import 'package:html/parser.dart' as html_parser;
+import 'package:http/http.dart' as http;
 
 import 'package:community_parser/util/get_document.dart';
-import 'package:community_parser/core/site_define.dart' as site_define;
 
-enum PrefixParseResult {
-  skip_child_parse,
-  keep_going,
-  ignore,
-}
+import 'site_define.dart' as site_define;
+import 'content_element.dart';
 
-enum PostContentType {
-  none,
-  root,
-  container,
-  span,
-  text, // 표시
-  new_line,
-  link,
-  img, // 표시
-  video, // 표시
-  paragraph,
-}
-
+/// PostParser
+/// - Post 본문을 Parsing을 수행한다.
+/// - dom형식으로 파싱하고, tree구조를 최적화 해야한다.
+/// - tree 구조 최적화 형식은 PostElement을 상속 받은 클래스에서 구현
 class PostParser {
   static Future<PostElement> parse<T extends PostElement>(
-      String bodyUrl) async {
+    String postId, {
+    String subUrl = '',
+    Map<String, String> query,
+    bool needQuestionMark = false,
+  }) async {
     var siteType = site_define.getSiteType<T>();
-    var uri = site_define.getPostUri(siteType: siteType, postfixUrl: bodyUrl);
+    var uri = site_define.getPostUri(
+      siteType: siteType,
+      postId: postId,
+      subUrl: subUrl,
+      query: query,
+      needQuestionMark: needQuestionMark,
+    );
     if (uri == null) {
-      return null;
+      throw ArgumentError('getPostUrl Failed');
     }
 
     final documentResult = await getDocument(uri);
     if (documentResult.statueType != StatusType.OK) {
-      return null;
+      throw ArgumentError('getDocument($uri) is status not ok');
     }
 
     final document = html_parser.parse(documentResult.documentBody);
@@ -50,261 +49,100 @@ class PostParser {
   }
 }
 
-abstract class PostElement {
-  final List<PostElement> _children = <PostElement>[];
-  PostContentType _type = PostContentType.none;
-  String _tag = '';
-  String _content = '';
-
-  PostContentType get postContentType => _type;
-  String get tag => _tag;
-  String get content => _content;
-  List<PostElement> get children => _children;
-
-  PostElement createPostElement({
-    PostContentType contentType,
-  });
-
-  void setElementData({
-    PostContentType contentType = PostContentType.container,
-    String tag = '',
-    String content = '',
-  }) {
-    _type = contentType;
-    _tag = tag;
-    _content = content;
-  }
-
-  void addChildPostElement({
-    PostContentType contentType = PostContentType.container,
-    String tag = '',
-    String content = '',
-  }) {
-    _children.add(createPostElement()
-      ..setElementData(contentType: contentType, tag: tag, content: content));
-  }
-
-  void printPost({int tabCount = 0}) {
-    final tabCountStr = '-' * tabCount;
-    print(
-        '${tabCountStr}tag = $tag, contentType = $postContentType, content = $content');
-
-    for (var child in _children) {
-      child.printPost(tabCount: tabCount + 1);
-    }
-  }
-
-  void parseRoot(Element rootNode) {
-    setElementData(contentType: PostContentType.root);
-
-    for (var node in rootNode.nodes) {
-      var postEmenet = createPostElement();
-      postEmenet = postEmenet?._parse(node);
-
-      if (postEmenet != null) {
-        _children.add(postEmenet);
-      }
-    }
-  }
-
-  PostElement _parse(Node rootNode) {
-    if (rootNode.nodeType != Node.ELEMENT_NODE &&
-        rootNode.nodeType != Node.TEXT_NODE) {
-      return null;
-    }
-
-    // TextNode Parsing
-    if (rootNode.nodeType == Node.TEXT_NODE) {
-      final content = rootNode.text.trim();
-      if (content.isEmpty) {
-        return null;
-      }
-
-      setElementData(
-        contentType: PostContentType.text,
-        content: content,
-      );
-      return this;
-    }
-
-    final prefixResult = _prefixParseTag(rootNode);
-    if (prefixResult == PrefixParseResult.ignore) {
-      return null;
-    } else if (prefixResult == PrefixParseResult.skip_child_parse) {
-      return this;
-    }
-
-    for (var node in rootNode.nodes) {
-      var postEmenet = createPostElement();
-      postEmenet = postEmenet?._parse(node);
-
-      if (postEmenet != null) {
-        _children.add(postEmenet);
-      }
-    }
-
-    return _postfixParseTag(this);
-  }
-
-  /// true : Skip 하위 자식 parse 생략
-  PrefixParseResult _prefixParseTag(Node targetNode) {
-    var targetElement = targetNode as Element;
-    if (targetElement == null) {
-      return PrefixParseResult.keep_going;
-    }
-
-    final tag = targetElement.localName.toLowerCase();
-    switch (tag) {
-      case 'a':
-        return prefixParseATag(targetElement);
-      case 'img':
-        return prefixParseImgTag(targetElement);
-      case 'table':
-        return prefixParseTableTag(targetElement);
-      case 'br':
-        setElementData(tag: tag, contentType: PostContentType.new_line);
-        return PrefixParseResult.keep_going;
-    }
-
-    return prefixParseDefaultTag(tag, targetElement);
-  }
-
-  PostElement _postfixParseTag(PostElement postElement) {
-    switch (postElement.tag) {
-      case 'a':
-        return postfixParseATag(postElement);
-      case 'img':
-        return postfixParseImgTag(postElement);
-      case 'p':
-        return postfixParsePTag(postElement);
-    }
-
-    return postfixParseDefaultTag(postElement);
-  }
-
-  //////////////////////////////////////////////////////
-  PrefixParseResult prefixParseDefaultTag(String tag, Element targetElement) {
-    setElementData(tag: tag);
-    return PrefixParseResult.keep_going;
-  }
-
-  PrefixParseResult prefixParseATag(Element targetElement) {
-    var linkSource = targetElement.attributes['href'] ?? '';
-
-    setElementData(
-        tag: 'a', contentType: PostContentType.link, content: linkSource);
-
-    return PrefixParseResult.keep_going;
-  }
-
-  PrefixParseResult prefixParseImgTag(Element targetElement) {
-    var imgSource = targetElement.attributes['src'] ?? '';
-
-    setElementData(
-      tag: 'img',
-      contentType: PostContentType.img,
-      content: imgSource,
-    );
-
-    return PrefixParseResult.keep_going;
-  }
-
-  PrefixParseResult prefixParseTableTag(Element targetElement) {
-    setElementData(tag: tag);
-    return PrefixParseResult.keep_going;
-  }
-
-  //////////////////////////////////////////////////////
-  PostElement postfixParseDefaultTag(PostElement postElement) {
-    return postElement;
-  }
-
-  PostElement postfixParseATag(PostElement postElement) {
-    // a 태그 하단에 Img 태그 하나만 있다면, img 태그로 대체
-    var imgPostElements = <PostElement>[];
-    for (var child in postElement.children) {
-      if (child.tag == 'img') {
-        imgPostElements.add(child);
-      }
-    }
-
-    if (imgPostElements.length == 1) {
-      return imgPostElements[0];
-    }
-
-    return postElement;
-  }
-
-  PostElement postfixParseImgTag(PostElement postElement) {
-    return postElement;
-  }
-
-  PostElement postfixParsePTag(PostElement postElement) {
-    // p 태그에 어떤 표시 컨텐츠도 없으면 생략...
-    if (postElement.isExistContent() == false) {
-      return null;
-    }
-
-    return postElement;
-  }
-
-  //////////////////////////////////////////////////////
-  bool isExistContent() {
-    if (_type == PostContentType.text) return true;
-    if (_type == PostContentType.img) return true;
-
-    for (var child in _children) {
-      if (child.isExistContent() == true) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  PostElement findPostElementFromTag(List<String> tag) {
-    for (var child in _children) {
-      if (tag.contains(child.tag)) {
-        return child;
-      }
-
-      var findPostElement = child.findPostElementFromTag(tag);
-      if (findPostElement != null) {
-        return findPostElement;
-      }
-    }
-
-    return null;
-  }
-
-  Iterable<PostElement> findPostElementAllFromTag(List<String> tags) sync* {
-    for (var child in _children) {
-      if (tag.contains(child.tag)) {
-        yield child;
-      }
-
-      yield* child.findPostElementAllFromTag(tags);
-    }
-  }
-}
-
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
+/// PostCommentParser
+/// - Comment내용을 parsing한다.
+/// - PostCommnetItem을 상속받은 클래스에서 CommentRoot Element를 기준으로 QuerySelector를 수행하여 요소를 찾는다.
 class PostCommentParser {
-  static Future<List<PostCommentItem>> parse<T extends PostCommentItem>(
-      String bodyUrl) async {
+  /// Page가 존재 하지않는 CommentList 인 사이트 일 경우 호출
+  static Future<List<PostCommentItem>>
+      parseForSingle<T extends PostCommentItem>(
+    String postId, {
+    String subUrl = '',
+    Map<String, String> query,
+    bool needQuestionMark = false,
+  }) async {
     var siteType = site_define.getSiteType<T>();
-    var uri = site_define.getPostUri(siteType: siteType, postfixUrl: bodyUrl);
+
+    var uri = site_define.getCommentUri(
+      siteType: siteType,
+      postId: postId,
+      subUrl: subUrl,
+      query: query,
+      needQuestionMark: needQuestionMark,
+    );
     if (uri == null) {
-      return null;
+      throw ArgumentError('getPostUrl Failed');
     }
 
-    final documentResult = await getDocument(uri);
+    return await _parseCommentUnit(siteType, uri);
+  }
+
+  /// Page가 존재하는 CommentList 인 사이트 일 경우 호출
+  static Future<List<PostCommentItem>> parseForPage<T extends PostCommentItem>(
+    String postId, {
+    String subUrl = '',
+    Map<String, String> query,
+    bool needQuestionMark = false,
+  }) async {
+    var siteType = site_define.getSiteType<T>();
+    var siteMeta = site_define.getSiteMeta(siteType: siteType);
+    if (siteMeta == null) {
+      throw ArgumentError('getSiteMeta Failed');
+    }
+
+    var uri = site_define.getCommentUri(
+      siteType: siteType,
+      postId: postId,
+      subUrl: subUrl,
+      query: query,
+      needQuestionMark: needQuestionMark,
+    );
+    if (uri == null) {
+      throw ArgumentError('getPostUrl Failed');
+    }
+
+    if (siteMeta.isExistCommentPage == false) {
+      return await _parseCommentUnit(siteType, uri);
+    }
+
+    // 댓글 현재페이지/ 전체 페이지 갯수 가져오기
+    var pageTuple = await siteMeta.getCommentPageCount(uri);
+    final defaultPageIndex = pageTuple.item1;
+    final totalPagecount = pageTuple.item2;
+
+    var totalPageCommentItems = <PostCommentItem>[];
+    // defaultPage 외에 CommentItems들을 가져온다.
+    for (var pageIndex = 0; pageIndex < totalPagecount; pageIndex++) {
+      var commentPageUrl =
+          siteMeta.getCommentPageUrl(pageIndex, postId: postId);
+
+      var anotherCommnetItems =
+          await _parseCommentUnit(siteType, commentPageUrl);
+
+      if (anotherCommnetItems == null) {
+        continue;
+      }
+
+      totalPageCommentItems.addAll(anotherCommnetItems);
+    }
+
+    return totalPageCommentItems;
+  }
+
+  static Future<List<PostCommentItem>>
+      _parseCommentUnit<T extends PostCommentItem>(
+    site_define.SiteType siteType,
+    Uri commentPageUrl,
+  ) async {
+    final documentResult = await getDocument(commentPageUrl);
     if (documentResult.statueType != StatusType.OK) {
-      return null;
+      throw ArgumentError('getDocument($commentPageUrl) is status not ok');
     }
 
-    final document = html_parser.parse(documentResult.documentBody);
+    final document = site_define.getPostCommentDocument(
+      siteType: siteType,
+      documentString: documentResult.documentBody,
+    );
 
     final commentElements = site_define.getPostCommentListElements(
       siteType: siteType,
@@ -335,13 +173,12 @@ abstract class PostCommentItem {
   var authorIconUrl = '';
   var authorName = '';
 
-  var commentImgUrl = '';
-  var commentText = '';
+  CommentContent commentContent;
 
   var commentGoodCount = 0;
   var commentBadCount = 0;
 
-  DateTime commentWriteDatetime;
+  String commentWriteDatetime;
 
   bool parseRoot(Element element) {
     reComment = parseReComment(element);
@@ -349,11 +186,12 @@ abstract class PostCommentItem {
     authorIconUrl = parseAuthorIconUrl(element);
     authorName = parseAuthorName(element);
 
-    commentImgUrl = parseCommentImgUrl(element);
-    commentText = parseCommentText(element);
+    commentContent = createCommentContent();
+    final contentElement = getCommentContentElement(element);
+    commentContent.parseRoot(contentElement);
 
     commentGoodCount = parseCommentGoodCount(element);
-    commentBadCount = parseComentBadCount(element);
+    commentBadCount = parseCommentBadCount(element);
 
     commentWriteDatetime = parseCommentWriteDatetime(element);
 
@@ -364,34 +202,42 @@ abstract class PostCommentItem {
   String parseAuthorIconUrl(Element element);
   String parseAuthorName(Element element);
 
-  String parseCommentImgUrl(Element element);
-  String parseCommentText(Element element);
+  CommentContent createCommentContent();
+  Element getCommentContentElement(Element element);
 
   int parseCommentGoodCount(Element element);
-  int parseComentBadCount(Element element);
+  int parseCommentBadCount(Element element);
 
-  DateTime parseCommentWriteDatetime(Element element);
+  String parseCommentWriteDatetime(Element element);
 }
 
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-
+/// PostListParser
+/// - 게시물 리스트의 각 항목의 요소들을 Parsing한다.
+/// - PostListItemParser를 상속 받아서 처리한다.
+/// - 각 사이트 별로, 게시물 리스트로부터 항목 요소 Parsing부분,<br>
+///   본몬으로부터 항목 요소 Parsing부분을 구현하여 한다.
+/// - 항목 요소는 PostListItem을 반환(전 사이트 공통)
 class PostListParser {
   static Future<List<PostListItem>> parse<T extends PostListItemParser>({
     @required int pageIndex,
+    String subUrl = '',
     Map<String, String> query,
   }) async {
     final siteType = site_define.getSiteType<T>();
 
     var uri = site_define.getPageUri(
-        siteType: siteType, query: query, pageIndex: pageIndex);
+      siteType: siteType,
+      query: query,
+      subUrl: subUrl,
+      pageIndex: pageIndex,
+    );
     if (uri == null) {
       throw ArgumentError('T is not define');
     }
 
     final documentResult = await getDocument(uri);
     if (documentResult.statueType != StatusType.OK) {
-      throw ArgumentError('getDocument failed');
+      throw ArgumentError('getDocument($uri) status is not ok');
     }
 
     final document = html_parser.parse(documentResult.documentBody);
@@ -426,10 +272,20 @@ class PostListParser {
   }
 
   static Future<PostListItem> parseFromPostBody<T extends PostListItemParser>(
-      String bodyUrl) async {
+    String postId, {
+    String subUrl = '',
+    Map<String, String> query,
+    bool needQuestionMark = false,
+  }) async {
     final siteType = site_define.getSiteType<T>();
 
-    var uri = site_define.getPostUri(siteType: siteType, postfixUrl: bodyUrl);
+    var uri = site_define.getPostUri(
+      siteType: siteType,
+      postId: postId,
+      subUrl: subUrl,
+      query: query,
+      needQuestionMark: needQuestionMark,
+    );
     if (uri == null) {
       throw ArgumentError('T is not define');
     }
@@ -459,7 +315,7 @@ class PostListParser {
     );
 
     if (postListItem.parseRoot(postBodyRootElement, parser: parser) == false) {
-      return null;
+      throw ArgumentError('${T.runtimeType} parseRoot is Failed');
     }
 
     return postListItem;
@@ -477,11 +333,15 @@ abstract class PostListItemParser {
     _document = docuemnt;
   }
 
+  bool isPostListItem(Element element) {
+    return true;
+  }
+
   String parsePostId(Element element);
   String parseBodyUrl(Element element);
 
   String parseThumbnailUrl(Element element);
-  String parseSubjet(Element element);
+  String parseSubject(Element element);
 
   String parseAuthorIconUrl(Element element);
   String parseAuthorName(Element element);
@@ -491,7 +351,7 @@ abstract class PostListItemParser {
   int parseGoodCount(Element element);
   int parseBadCount(Element element);
 
-  DateTime parseWriteDateTime(Element element);
+  String parseWriteDateTime(Element element);
 }
 
 class PostListItem {
@@ -508,7 +368,15 @@ class PostListItem {
   var goodCount = 0;
   var badCount = 0;
 
-  DateTime writeDateTime;
+  String writeDateTime;
+
+  bool get isEmpty {
+    if (postBodyUrl.isEmpty || subject.isEmpty) {
+      return true;
+    }
+
+    return false;
+  }
 
   bool parseRoot(
     Element element, {
@@ -524,7 +392,7 @@ class PostListItem {
 
     thumbnailUrl =
         _parseWarp<String>(parser.parseThumbnailUrl, element: element) ?? '';
-    subject = _parseWarp<String>(parser.parseSubjet, element: element) ?? '';
+    subject = _parseWarp<String>(parser.parseSubject, element: element) ?? '';
     authorIconUrl =
         _parseWarp<String>(parser.parseAuthorIconUrl, element: element) ?? '';
     authorName =
@@ -537,7 +405,7 @@ class PostListItem {
     badCount = _parseWarp<int>(parser.parseBadCount, element: element) ?? 0;
 
     writeDateTime =
-        _parseWarp<DateTime>(parser.parseWriteDateTime, element: element);
+        _parseWarp<String>(parser.parseWriteDateTime, element: element);
 
     return true;
   }

@@ -14,7 +14,7 @@
             "name": "Dart Run",
             "type": "dart",
             "request": "launch",
-            "program": "example/community_parser_example.dart"
+            "program": "example/main.dart"
         },
     ]
 }
