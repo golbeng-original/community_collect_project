@@ -1,4 +1,5 @@
-import 'package:http/http.dart' as http;
+import 'package:community_parser/core/site_cookie.dart';
+import 'package:community_parser/core/site_meta.dart';
 import 'package:test/test.dart';
 import 'package:html/parser.dart' as http_parser;
 
@@ -8,6 +9,26 @@ import 'package:community_parser/core/site_define.dart' as site_define;
 import 'package:html/dom.dart';
 
 //import '../lib/community_parser.dart';
+
+var _siteCookie = SiteCookie();
+
+Future<Document> _getDocunemt(
+  Uri uri, {
+  required SiteMeta siteMeta,
+}) async {
+  var cookieValue = _siteCookie.getCookieValue(siteMeta.siteDomain);
+
+  var headers = <String, String>{'cookie': cookieValue};
+
+  final documentResult = await getDocument(uri, headers: headers);
+  if (documentResult.statueType != StatusType.OK) {
+    throw ArgumentError('getDocument failed');
+  }
+
+  _siteCookie.updateCookie(siteMeta.siteDomain, documentResult.cookies);
+
+  return http_parser.parse(documentResult.documentBody);
+}
 
 void main() {
   group('humoruniv siteMeta test group', () {
@@ -19,15 +40,6 @@ void main() {
     var testPostId = '1057811';
     var testWrongPostId = '1057811234234xx';
 
-    Future<Document> _getDocunemt(Uri uri) async {
-      final documentResult = await getDocument(uri);
-      if (documentResult.statueType != StatusType.OK) {
-        throw ArgumentError('getDocument failed');
-      }
-
-      return http_parser.parse(documentResult.documentBody);
-    }
-
     test('isErrorListPage success test', () async {
       final postListUrl = siteMeta.getListUrl(
         pageIndex: testListPageIndex,
@@ -35,7 +47,8 @@ void main() {
       );
 
       try {
-        var document = await _getDocunemt(Uri.parse(postListUrl));
+        var document =
+            await _getDocunemt(Uri.parse(postListUrl), siteMeta: siteMeta);
 
         expect(
           siteMeta.isErrorListPage(document),
@@ -59,7 +72,8 @@ void main() {
       );
 
       try {
-        var document = await _getDocunemt(Uri.parse(postListWrongUrl));
+        var document =
+            await _getDocunemt(Uri.parse(postListWrongUrl), siteMeta: siteMeta);
 
         expect(
           siteMeta.isErrorListPage(document),
@@ -77,7 +91,8 @@ void main() {
       try {
         postBodyUrl =
             siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
-        document = await _getDocunemt(Uri.parse(postBodyUrl));
+        document =
+            await _getDocunemt(Uri.parse(postBodyUrl), siteMeta: siteMeta);
       } catch (e) {
         expect(e, isNull, reason: '_getDocunemt($postBodyUrl) throws Error');
       }
@@ -95,7 +110,8 @@ void main() {
 
       var document;
       try {
-        document = await _getDocunemt(Uri.parse(postBodyWrongUrl));
+        document =
+            await _getDocunemt(Uri.parse(postBodyWrongUrl), siteMeta: siteMeta);
       } catch (e) {
         return;
       }
@@ -113,7 +129,8 @@ void main() {
         query: testListPageQuery,
       );
 
-      final document = await _getDocunemt(Uri.parse(postListUrl));
+      final document =
+          await _getDocunemt(Uri.parse(postListUrl), siteMeta: siteMeta);
       expect(
         siteMeta.isErrorListPage(document),
         false,
@@ -125,7 +142,8 @@ void main() {
       final postBodyUrl =
           siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
 
-      final document = await _getDocunemt(Uri.parse(postBodyUrl));
+      final document =
+          await _getDocunemt(Uri.parse(postBodyUrl), siteMeta: siteMeta);
       expect(
         siteMeta.isErrorListPage(document),
         false,
@@ -140,7 +158,7 @@ void main() {
       );
 
       var uri = Uri.parse(postListUrl);
-      final document = await _getDocunemt(uri);
+      final document = await _getDocunemt(uri, siteMeta: siteMeta);
 
       List<Element> postItemList;
       expect(
@@ -164,7 +182,7 @@ void main() {
           siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
 
       final uri = Uri.parse(postBodyUrl);
-      final document = await _getDocunemt(uri);
+      final document = await _getDocunemt(uri, siteMeta: siteMeta);
 
       expect(
         siteMeta.getPostRootQuery(document),
@@ -181,7 +199,7 @@ void main() {
           siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
 
       final uri = Uri.parse(postBodyUrl);
-      final document = await _getDocunemt(uri);
+      final document = await _getDocunemt(uri, siteMeta: siteMeta);
 
       expect(
         siteMeta.getPostItemFromBodyRootQuery(document),
@@ -198,7 +216,7 @@ void main() {
           siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
 
       final uri = Uri.parse(postBodyUrl);
-      final document = await _getDocunemt(uri);
+      final document = await _getDocunemt(uri, siteMeta: siteMeta);
 
       expect(
         siteMeta.getCommentListRootQuery(document),
@@ -271,7 +289,7 @@ void main() {
     });
 
     test('PostListParser success test', () async {
-      List<PostListItem> postListItems;
+      late List<PostListItem> postListItems;
       try {
         postListItems = await PostListParser.parse<HumorunivPostListItemParser>(
           pageIndex: 0,
@@ -324,7 +342,7 @@ void main() {
     });
 
     test('PostListParser from body success test', () async {
-      PostListItem postListItem;
+      PostListItem? postListItem;
       try {
         postListItem = await PostListParser.parseFromPostBody<
                 HumorunivPostListItemFromBodyParser>(testPostId,
@@ -343,9 +361,9 @@ void main() {
         );
       }
 
-      expect(postListItem.authorIconUrl, isNotEmpty);
-      expect(postListItem.authorName, isNotEmpty);
-      expect(postListItem.subject, isNotEmpty);
+      expect(postListItem?.authorIconUrl, isNotEmpty);
+      expect(postListItem?.authorName, isNotEmpty);
+      expect(postListItem?.subject, isNotEmpty);
     });
 
     test('PostListParser from body fail test', () async {
@@ -360,7 +378,7 @@ void main() {
     });
 
     test('PostParser success test', () async {
-      HumorunivPostElement element;
+      HumorunivPostElement? element;
       try {
         element = await PostParser.parse<HumorunivPostElement>(
           testPostId,
@@ -377,7 +395,7 @@ void main() {
       }
 
       expect(
-        element.isExistContent(),
+        element?.isExistContent(),
         true,
         reason: 'post result existContent',
       );
@@ -417,7 +435,7 @@ void main() {
             reason: 'authorName is empty index = $index',
           );
           expect(
-            postCommentItem.commentContent.isExistContent(),
+            postCommentItem.commentContent?.isExistContent(),
             true,
             reason: 'commentContent is empty index = $index',
           );

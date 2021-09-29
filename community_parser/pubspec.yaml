@@ -3,16 +3,23 @@ description: A starting point for Dart libraries or applications.
 version: 0.1.0
 # homepage: https://www.example.com
 
+publish_to: none
+
 environment:
-  sdk: '>=2.10.0 <3.0.0'
+  sdk: '>=2.13.0 <3.0.0'
 
 dependencies:
   html: ^0.15.0
   http: ^0.13.1
-  cp949: ^1.2.1
+  #cp949: ^1.2.1
   sprintf: ^4.0.0
   tuple: ^2.0.0
 
+  cp949:
+    git:
+      url: https://github.com/golbeng-original/dart-cp949.git
+      ref: main
+      
 dev_dependencies:
   pedantic: ^1.9.0
   test: ^1.14.4

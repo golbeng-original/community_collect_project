@@ -1,11 +1,14 @@
 import 'package:community_parser/core/site_cookie.dart';
 import 'package:community_parser/core/site_meta.dart';
 import 'package:test/test.dart';
-import 'package:html/dom.dart';
 import 'package:html/parser.dart' as http_parser;
 
 import 'package:community_parser/community_parser.dart';
+import 'package:community_parser/util/get_document.dart';
 import 'package:community_parser/core/site_define.dart' as site_define;
+import 'package:html/dom.dart';
+
+//import '../lib/community_parser.dart';
 
 var _siteCookie = SiteCookie();
 
@@ -27,20 +30,32 @@ Future<Document> _getDocunemt(
   return http_parser.parse(documentResult.documentBody);
 }
 
+Future _headRequest(
+  Uri uri, {
+  required SiteMeta siteMeta,
+}) async {
+  final documentResult = await headRequest(uri);
+  if (documentResult.statueType != StatusType.OK) {
+    throw ArgumentError('getDocument failed');
+  }
+
+  _siteCookie.updateCookie(siteMeta.siteDomain, documentResult.cookies);
+}
+
 void main() {
-  group('clien siteMeta test group', () {
-    var siteMeta = ClienSiteMeta();
+  group('humoruniv p2 siteMeta test group', () {
+    var siteMeta = HumorunivP2SiteMeta();
 
     var testListPageIndex = 0;
-    var testListPageSubUrl = 'board/park';
-    var testListPageWroungSubUrl = 'board/park_xxx';
-    var testPostId = '16169025';
-    var testWrongPostId = '16169025xcs';
+    var testListPageQuery = {'table': 'picture'};
+    var testListWrongPageQuery = {'table': 'xxx'};
+    var testPostId = '637954';
+    var testWrongPostId = '6981xx';
 
     test('isErrorListPage success test', () async {
       final postListUrl = siteMeta.getListUrl(
         pageIndex: testListPageIndex,
-        subUrl: testListPageSubUrl,
+        query: testListPageQuery,
       );
 
       try {
@@ -65,7 +80,7 @@ void main() {
     test('isErrorListPage fail test', () async {
       final postListWrongUrl = siteMeta.getListUrl(
         pageIndex: testListPageIndex,
-        subUrl: testListPageWroungSubUrl,
+        query: testListWrongPageQuery,
       );
 
       try {
@@ -83,13 +98,20 @@ void main() {
     });
 
     test('isErrorPostPage success test', () async {
-      var postBodyUrl;
-      var document;
+      late String postBodyUrl;
+      late Document document;
       try {
-        postBodyUrl = siteMeta.getPostBodyUrl(
-          testPostId,
-          subUrl: testListPageSubUrl,
+        // Cookie를 얻어와야 해서 선행해야 한다.
+        final postListUrl = siteMeta.getListUrl(
+          pageIndex: testListPageIndex,
+          query: testListPageQuery,
         );
+
+        var uri = Uri.parse(postListUrl);
+        await _headRequest(uri, siteMeta: siteMeta);
+
+        postBodyUrl =
+            siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
         document =
             await _getDocunemt(Uri.parse(postBodyUrl), siteMeta: siteMeta);
       } catch (e) {
@@ -104,10 +126,8 @@ void main() {
     });
 
     test('isErrorPostPage fail test', () async {
-      final postBodyWrongUrl = siteMeta.getPostBodyUrl(
-        testWrongPostId,
-        subUrl: testListPageWroungSubUrl,
-      );
+      final postBodyWrongUrl =
+          siteMeta.getPostBodyUrl(testWrongPostId, query: testListPageQuery);
 
       var document;
       try {
@@ -127,7 +147,7 @@ void main() {
     test('getListUrl test', () async {
       final postListUrl = siteMeta.getListUrl(
         pageIndex: testListPageIndex,
-        subUrl: testListPageSubUrl,
+        query: testListPageQuery,
       );
 
       final document =
@@ -140,10 +160,8 @@ void main() {
     });
 
     test('getPostBodyUrl test', () async {
-      final postBodyUrl = siteMeta.getPostBodyUrl(
-        testPostId,
-        subUrl: testListPageSubUrl,
-      );
+      final postBodyUrl =
+          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
 
       final document =
           await _getDocunemt(Uri.parse(postBodyUrl), siteMeta: siteMeta);
@@ -157,7 +175,7 @@ void main() {
     test('getPostItemListRootQuery test', () async {
       final postListUrl = siteMeta.getListUrl(
         pageIndex: testListPageIndex,
-        subUrl: testListPageSubUrl,
+        query: testListPageQuery,
       );
 
       var uri = Uri.parse(postListUrl);
@@ -181,13 +199,21 @@ void main() {
     });
 
     test('getPostRootQuery', () async {
-      final postBodyUrl = siteMeta.getPostBodyUrl(
-        testPostId,
-        subUrl: testListPageSubUrl,
+      // Cookie를 얻어와야 해서 선행해야 한다.
+      final postListUrl = siteMeta.getListUrl(
+        pageIndex: testListPageIndex,
+        query: testListPageQuery,
       );
 
-      final uri = Uri.parse(postBodyUrl);
-      final document = await _getDocunemt(uri, siteMeta: siteMeta);
+      var uri = Uri.parse(postListUrl);
+      await _headRequest(uri, siteMeta: siteMeta);
+
+      //
+      final postBodyUrl =
+          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+
+      uri = Uri.parse(postBodyUrl);
+      var document = await _getDocunemt(uri, siteMeta: siteMeta);
 
       expect(
         siteMeta.getPostRootQuery(document),
@@ -200,12 +226,19 @@ void main() {
     });
 
     test('getPostItemFromBodyRootQuery', () async {
-      final postBodyUrl = siteMeta.getPostBodyUrl(
-        testPostId,
-        subUrl: testListPageSubUrl,
+      // Cookie를 얻어와야 해서 선행해야 한다.
+      final postListUrl = siteMeta.getListUrl(
+        pageIndex: testListPageIndex,
+        query: testListPageQuery,
       );
 
-      final uri = Uri.parse(postBodyUrl);
+      var uri = Uri.parse(postListUrl);
+      await _headRequest(uri, siteMeta: siteMeta);
+
+      final postBodyUrl =
+          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+
+      uri = Uri.parse(postBodyUrl);
       final document = await _getDocunemt(uri, siteMeta: siteMeta);
 
       expect(
@@ -219,12 +252,19 @@ void main() {
     });
 
     test('getCommentListRootQuery', () async {
-      final postBodyUrl = siteMeta.getPostBodyUrl(
-        testPostId,
-        subUrl: testListPageSubUrl,
+      // Cookie를 얻어와야 해서 선행해야 한다.
+      final postListUrl = siteMeta.getListUrl(
+        pageIndex: testListPageIndex,
+        query: testListPageQuery,
       );
 
-      final uri = Uri.parse(postBodyUrl);
+      var uri = Uri.parse(postListUrl);
+      await _headRequest(uri, siteMeta: siteMeta);
+
+      final postBodyUrl =
+          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
+
+      uri = Uri.parse(postBodyUrl);
       final document = await _getDocunemt(uri, siteMeta: siteMeta);
 
       expect(
@@ -239,10 +279,8 @@ void main() {
     });
 
     test('pageComment test', () async {
-      final postBodyUrl = siteMeta.getPostBodyUrl(
-        testPostId,
-        subUrl: testListPageSubUrl,
-      );
+      final postBodyUrl =
+          siteMeta.getPostBodyUrl(testPostId, query: testListPageQuery);
 
       if (siteMeta.isExistCommentPage == true) {
         var pageInfoTuple =
@@ -266,44 +304,46 @@ void main() {
     });
   });
 
-  group('clien parse test group', () {
-    var testListPageSubUrl = 'board/park';
-    var testListPageWroungSubUrl = 'board/park_xxx';
-    var testPostId = '16169025';
-    var testWrongPostId = '16169025xcs';
+  group('humoruniv p2 parse test group', () {
+    final testListPageQuery = {'table': 'picture'};
+    final testListWroungPageQuery = {'table': 'xxx'};
+
+    final testPostId = '637954';
+    final testWrongPostId = '6883xxx23';
 
     test('getSiteType', () {
       expect(
-        site_define.getSiteType<ClienPostListItemParser>(),
-        site_define.SiteType.clien,
-        reason: 'find SiteType is wrong [ClienPostListItemParser]',
+        site_define.getSiteType<HumorunivP2PostListItemParser>(),
+        site_define.SiteType.humoruniv_p2,
+        reason: 'find SiteType is wrong [HumorunivPostListItemParser]',
       );
 
       expect(
-        site_define.getSiteType<ClienPostListItemFromBodyParser>(),
-        site_define.SiteType.clien,
-        reason: 'find SiteType is wrong [ClienPostListItemFromBodyParser]',
+        site_define.getSiteType<HumorunivPostListItemFromBodyParser>(),
+        site_define.SiteType.humoruniv,
+        reason: 'find SiteType is wrong [HumorunivPostListItemFromBodyParser]',
       );
 
       expect(
-        site_define.getSiteType<ClienPostElement>(),
-        site_define.SiteType.clien,
-        reason: 'find SiteType is wrong [ClienPostElement]',
+        site_define.getSiteType<HumorunivPostElement>(),
+        site_define.SiteType.humoruniv,
+        reason: 'find SiteType is wrong [HumorunivPostElement]',
       );
 
       expect(
-        site_define.getSiteType<ClienPostCommentItem>(),
-        site_define.SiteType.clien,
-        reason: 'find SiteType is wrong [ClienPostCommentItem]',
+        site_define.getSiteType<HumorunivPostCommentItem>(),
+        site_define.SiteType.humoruniv,
+        reason: 'find SiteType is wrong [HumorunivPostComentItem]',
       );
     });
 
     test('PostListParser success test', () async {
       late List<PostListItem> postListItems;
       try {
-        postListItems = await PostListParser.parse<ClienPostListItemParser>(
+        postListItems =
+            await PostListParser.parse<HumorunivP2PostListItemParser>(
           pageIndex: 0,
-          subUrl: testListPageSubUrl,
+          query: testListPageQuery,
         );
 
         expect(
@@ -330,10 +370,9 @@ void main() {
           reason: 'authorIconUrl is Empty index = $index',
         );
         expect(
-          postItemList.authorName.isNotEmpty ||
-              postItemList.authorIconUrl.isNotEmpty,
-          true,
-          reason: 'authorName or authorIconUrl is Empty index = $index',
+          postItemList.authorName,
+          isNotEmpty,
+          reason: 'authorName is Empty index = $index',
         );
         expect(
           postItemList.subject,
@@ -345,10 +384,8 @@ void main() {
 
     test('postListParser fail test', () async {
       expect(
-        PostListParser.parse<ClienPostListItemParser>(
-          pageIndex: 0,
-          subUrl: testListPageWroungSubUrl,
-        ),
+        PostListParser.parse<HumorunivP2PostListItemParser>(
+            pageIndex: 0, query: testListWroungPageQuery),
         throwsA(isA<Error>()),
         reason: 'wrong page query is wrong',
       );
@@ -358,10 +395,8 @@ void main() {
       PostListItem? postListItem;
       try {
         postListItem = await PostListParser.parseFromPostBody<
-            ClienPostListItemFromBodyParser>(
-          testPostId,
-          subUrl: testListPageSubUrl,
-        );
+                HumorunivPostListItemFromBodyParser>(testPostId,
+            query: testListPageQuery);
 
         expect(
           postListItem,
@@ -376,22 +411,16 @@ void main() {
         );
       }
 
-      expect(postListItem, isNotNull);
-
-      expect(
-        postListItem!.authorIconUrl.isNotEmpty ||
-            postListItem.authorName.isNotEmpty,
-        true,
-      );
-
-      expect(postListItem.subject.isNotEmpty, true);
+      expect(postListItem?.authorIconUrl, isNotEmpty);
+      expect(postListItem?.authorName, isNotEmpty);
+      expect(postListItem?.subject, isNotEmpty);
     });
 
     test('PostListParser from body fail test', () async {
       expect(
-        PostListParser.parseFromPostBody<ClienPostListItemFromBodyParser>(
+        PostListParser.parseFromPostBody<HumorunivPostListItemFromBodyParser>(
           testWrongPostId,
-          subUrl: testListPageSubUrl,
+          query: testListPageQuery,
         ),
         throwsA(isA<Error>()),
         reason: 'PostListParser.parseFromPostBody not throws Error',
@@ -399,11 +428,11 @@ void main() {
     });
 
     test('PostParser success test', () async {
-      ClienPostElement? element;
+      HumorunivPostElement? element;
       try {
-        element = await PostParser.parse<ClienPostElement>(
+        element = await PostParser.parse<HumorunivPostElement>(
           testPostId,
-          subUrl: testListPageSubUrl,
+          query: testListPageQuery,
         );
 
         expect(
@@ -424,8 +453,10 @@ void main() {
 
     test('PostParser fail test', () {
       expect(
-        PostParser.parse<ClienPostElement>(testWrongPostId,
-            subUrl: testListPageSubUrl),
+        PostParser.parse<HumorunivPostElement>(
+          testWrongPostId,
+          query: testListPageQuery,
+        ),
         throwsA(isA<Error>()),
         reason: 'PostParser.parse not throws Excpetion or Error',
       );
@@ -434,9 +465,9 @@ void main() {
     test('PostCommentParser success test', () async {
       try {
         final postCommentItems =
-            await PostCommentParser.parseForSingle<ClienPostCommentItem>(
+            await PostCommentParser.parseForSingle<HumorunivPostCommentItem>(
           testPostId,
-          subUrl: testListPageSubUrl,
+          query: testListPageQuery,
         );
 
         expect(
@@ -449,10 +480,9 @@ void main() {
           final index = postCommentItems.indexOf(postCommentItem);
 
           expect(
-            postCommentItem.authorName.isNotEmpty ||
-                postCommentItem.authorIconUrl.isNotEmpty,
-            true,
-            reason: 'authorName or authorUrl is empty index = $index',
+            postCommentItem.authorName,
+            isNotEmpty,
+            reason: 'authorName is empty index = $index',
           );
           expect(
             postCommentItem.commentContent?.isExistContent(),
@@ -469,7 +499,7 @@ void main() {
       expect(
         PostCommentParser.parseForSingle<HumorunivPostCommentItem>(
           testWrongPostId,
-          subUrl: testListPageSubUrl,
+          query: testListPageQuery,
         ),
         throwsA(isA<Error>()),
         reason: 'PostCommentParser.parse not throws Error',

@@ -9,6 +9,10 @@ export 'core/parser.dart';
 export 'core/content_element.dart';
 
 export 'humoruniv/model.dart';
+export 'humoruniv/model_p1.dart';
+export 'humoruniv/model_p4.dart';
+export 'humoruniv/model_p2.dart';
+
 export 'dogdrip/model.dart';
 export 'todayhumor/model.dart';
 export 'clien/model.dart';

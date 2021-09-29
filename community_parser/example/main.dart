@@ -5,6 +5,9 @@ import 'package:html/dom.dart' as dom;
 import 'package:test/expect.dart';
 
 import 'community_parser_example_humoruniv.dart';
+import 'community_parser_example_humoruniv_p1.dart';
+import 'community_parser_example_humoruniv_p2.dart';
+import 'community_parser_example_humoruniv_p4.dart';
 import 'community_parser_example_dogdrip.dart';
 import 'community_parser_example_todayhumor.dart';
 import 'community_parser_example_clien.dart';
@@ -13,9 +16,12 @@ import 'package:community_parser/community_parser.dart';
 
 void main() async {
   //exampleHumorunivPrint();
+  exampleHumorunivP1Print();
+  //exampleHumorunivP2Print();
+  //exampleHumorunivP4Print();
   //exampleDogDripPrint();
   //exampleTodayHumorPrint();
-  exampleClienPrint();
+  //exampleClienPrint();
 
   //_dogdripRegExpPostId();
   //_youtubeUrlMatch();
@@ -127,8 +133,8 @@ class TodayHumorComment {
     return memoNameSpan;
   }
 
-  dom.Element _toAuthorIcon(dom.Document document) {
-    dom.Element tag;
+  dom.Element? _toAuthorIcon(dom.Document document) {
+    dom.Element? tag;
     if (authorIcon == 'null' || authorIcon == 'default') {
       tag = document.createElement('span');
       tag.classes.add('memoMemberStar');
@@ -232,7 +238,7 @@ void _todayhumorCommentGet() async {
   ''';
 
   var document = dom.Document.html(commentHtml);
-  var commentConatiner = document.querySelector('#memoContainerDiv');
+  var commentConatiner = document.querySelector('#memoContainerDiv')!;
 
   var parentElements = <int, dom.Element>{};
   var removeComments = <TodayHumorComment>[];
@@ -276,6 +282,10 @@ void _todayhumorCommentGet() async {
     }
 
     var parentElement = parentElements[comment.parentId];
+    if (parentElement == null) {
+      print('parentElement is null wrong!! [id : ${comment.parentId}');
+      continue;
+    }
 
     var element = comment.toElement(document);
     parentElement.append(element);
@@ -284,7 +294,7 @@ void _todayhumorCommentGet() async {
   var sortKeys = parentElements.keys.toList();
   sortKeys.sort();
   for (var key in sortKeys) {
-    var element = parentElements[key];
+    var element = parentElements[key]!;
 
     commentConatiner.append(element);
   }

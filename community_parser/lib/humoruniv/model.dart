@@ -1,19 +1,23 @@
 import 'package:html/dom.dart';
-import 'package:http/http.dart';
-import 'package:meta/meta.dart';
 import 'package:community_parser/core/parser.dart';
 import 'package:community_parser/core/content_element.dart';
 import 'package:community_parser/core/site_meta.dart';
 
 class HumorunivSiteMeta extends SiteMeta {
+  HumorunivSiteMeta({bool isRefreshCookieRequest = false})
+      : super(
+          siteDomain: 'humoruniv',
+          isRefreshCookieRequest: isRefreshCookieRequest,
+        );
+
   @override
   bool isErrorListPage(Document document) {
-    if (document == null) {
+    if (document.body == null) {
       return true;
     }
 
     final errorReg = RegExp(r'^INTERNAL ERROR', caseSensitive: false);
-    if (errorReg.hasMatch(document.body.text) == true) {
+    if (errorReg.hasMatch(document.body!.text) == true) {
       return true;
     }
 
@@ -27,14 +31,17 @@ class HumorunivSiteMeta extends SiteMeta {
   }
 
   @override
-  String getAdjustListUrl(int pageIndex, {String subUrl}) {
+  String getAdjustListUrl(
+    int pageIndex, {
+    String subUrl = '',
+  }) {
     return 'http://web.humoruniv.com/board/humor/list.html?pg=$pageIndex';
   }
 
   @override
   String getAdjustPostBodyUrl(
     String postId, {
-    String subUrl,
+    String subUrl = '',
   }) {
     return 'http://web.humoruniv.com/board/humor/read.html?number=$postId';
   }
@@ -48,8 +55,8 @@ class HumorunivSiteMeta extends SiteMeta {
   }
 
   @override
-  Element getPostRootQuery(Document document) {
-    final divElement = document.querySelector('div#wrap_cnts');
+  Element? getPostRootQuery(Document document) {
+    final divElement = document.querySelector('div#cnts');
     final postBodyElement = divElement?.querySelector('wrap_copy#wrap_copy');
     return postBodyElement;
   }
@@ -64,7 +71,7 @@ class HumorunivSiteMeta extends SiteMeta {
   }
 
   @override
-  Element getPostItemFromBodyRootQuery(Document document) {
+  Element? getPostItemFromBodyRootQuery(Document document) {
     var postAuthorInfoRootElement =
         document.querySelector('table#profile_table');
     if (postAuthorInfoRootElement == null) {
@@ -114,7 +121,7 @@ class HumorunivPostListItemParser extends PostListItemParser {
   @override
   String parseSubject(Element element) {
     final subjectElement = element.querySelector('td.li_sbj > a');
-    final subjectHtml = subjectElement?.innerHtml?.trim() ?? '';
+    final subjectHtml = subjectElement?.innerHtml.trim() ?? '';
     final subjectSplit = subjectHtml.split('\n');
     if (subjectSplit.isEmpty == true) {
       return '';
@@ -133,7 +140,7 @@ class HumorunivPostListItemParser extends PostListItemParser {
     }
 
     final authorIconElement = authorRootElement.querySelector('img.hu_icon');
-    return authorIconElement.attributes['src'] ?? '';
+    return authorIconElement?.attributes['src'] ?? '';
   }
 
   @override
@@ -146,9 +153,9 @@ class HumorunivPostListItemParser extends PostListItemParser {
     }
 
     final authorNameElement =
-        authorRootElement?.querySelector('span.hu_nick_txt');
+        authorRootElement.querySelector('span.hu_nick_txt');
 
-    return authorNameElement?.text?.trim() ?? '';
+    return authorNameElement?.text.trim() ?? '';
   }
 
   @override
@@ -158,14 +165,14 @@ class HumorunivPostListItemParser extends PostListItemParser {
       return 0;
     }
     final commentElement =
-        subjectElement?.querySelector('span.list_comment_num');
+        subjectElement.querySelector('span.list_comment_num');
 
     if (commentElement == null) {
       return 0;
     }
 
     final commentHtml = commentElement.innerHtml.trim();
-    final findComment = RegExp('[0-9]+').firstMatch(commentHtml ?? '');
+    final findComment = RegExp('[0-9]+').firstMatch(commentHtml);
     return int.tryParse(findComment?.group(0) ?? '0') ?? 0;
   }
 
@@ -176,7 +183,7 @@ class HumorunivPostListItemParser extends PostListItemParser {
       return 0;
     }
 
-    var viewCountSource = undTypeElement.text.trim() ?? '';
+    var viewCountSource = undTypeElement.text.trim();
     viewCountSource = viewCountSource.replaceAll(',', '');
 
     return int.tryParse(viewCountSource) ?? 0;
@@ -191,7 +198,7 @@ class HumorunivPostListItemParser extends PostListItemParser {
     }
 
     final goodCountElement = undTypeElement.querySelector('span');
-    var goodCountSource = goodCountElement?.text?.trim() ?? '';
+    var goodCountSource = goodCountElement?.text.trim() ?? '';
     goodCountSource = goodCountSource.replaceAll(',', '');
 
     return int.tryParse(goodCountSource) ?? 0;
@@ -208,7 +215,7 @@ class HumorunivPostListItemParser extends PostListItemParser {
     }
 
     final badCountElement = undTypeElement.querySelector('font');
-    var badCountSource = badCountElement?.text?.trim() ?? '';
+    var badCountSource = badCountElement?.text.trim() ?? '';
     badCountSource = badCountSource.replaceAll(',', '');
 
     return int.tryParse(badCountSource) ?? 0;
@@ -219,13 +226,13 @@ class HumorunivPostListItemParser extends PostListItemParser {
     var writeDate = '';
     final writeDateElement = element.querySelector('td.li_date > span.w_date');
     if (writeDateElement != null) {
-      writeDate = writeDateElement.text ?? '';
+      writeDate = writeDateElement.text;
     }
 
     var writeTime = '';
     final writeTimeElement = element.querySelector('td.li_date > span.w_time');
     if (writeTimeElement != null) {
-      writeTime = writeTimeElement.text ?? '';
+      writeTime = writeTimeElement.text;
     }
 
     return DateTime.parse(writeDate + ' ' + writeTime).toString();
@@ -240,17 +247,17 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   @override
   String parsePostId(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
-    if (trElements == null || trElements.length < 3) {
+    if (trElements.length < 3) {
       return '';
     }
 
     final spanElements =
         trElements[2].querySelectorAll('div#content_info > span');
-    if (spanElements == null) {
+    if (spanElements.isEmpty) {
       return '';
     }
 
-    return spanElements.first?.text ?? '';
+    return spanElements.first.text;
   }
 
   @override
@@ -301,7 +308,7 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   String parseSubject(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
     final postSubjectElement =
-        trElements?.first?.querySelector('td > span#ai_cm_title');
+        trElements.first.querySelector('td > span#ai_cm_title');
 
     return postSubjectElement?.text ?? '';
   }
@@ -309,7 +316,7 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   @override
   String parseAuthorIconUrl(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
-    if (trElements == null || trElements.length < 2) {
+    if (trElements.length < 2) {
       return '';
     }
 
@@ -324,18 +331,18 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   @override
   String parseAuthorName(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
-    if (trElements == null || trElements.length < 2) {
+    if (trElements.length < 2) {
       return '';
     }
 
     final authorNameElement = trElements[1].querySelector('span.hu_nick_txt');
-    return authorNameElement?.text?.trim() ?? '';
+    return authorNameElement?.text.trim() ?? '';
   }
 
   @override
   int parseCommentCount(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
-    if (trElements == null || trElements.length < 3) {
+    if (trElements.length < 3) {
       return 0;
     }
 
@@ -349,17 +356,17 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   @override
   int parseViewCount(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
-    if (trElements == null || trElements.length < 3) {
+    if (trElements.length < 3) {
       return 0;
     }
 
     final spanElements =
         trElements[2].querySelectorAll('div#content_info > span');
-    if (spanElements == null) {
+    if (spanElements.isEmpty) {
       return 0;
     }
 
-    var viewCount = spanElements.last?.text ?? '';
+    var viewCount = spanElements.last.text;
     viewCount = viewCount.replaceAll(',', '');
     return int.tryParse(viewCount) ?? 0;
   }
@@ -367,7 +374,7 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   @override
   int parseGoodCount(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
-    if (trElements == null || trElements.length < 3) {
+    if (trElements.length < 3) {
       return 0;
     }
 
@@ -381,7 +388,7 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   @override
   int parseBadCount(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
-    if (trElements == null || trElements.length < 3) {
+    if (trElements.length < 3) {
       return 0;
     }
 
@@ -395,13 +402,13 @@ class HumorunivPostListItemFromBodyParser extends PostListItemParser {
   @override
   String parseWriteDateTime(Element element) {
     var trElements = element.querySelectorAll('tbody > tr');
-    if (trElements == null || trElements.length < 3) {
-      return null;
+    if (trElements.length < 3) {
+      return '';
     }
 
     final timeRootElement = trElements[2].querySelector('div#if_date');
     final writeDatetimeElement = timeRootElement?.querySelector('span');
-    final writeDateTime = writeDatetimeElement?.text?.trim() ?? '';
+    final writeDateTime = writeDatetimeElement?.text.trim() ?? '';
 
     return DateTime.tryParse(writeDateTime)?.toString() ?? '';
   }
@@ -431,7 +438,7 @@ class HumorunivPostElement extends PostElement {
         targetElement.querySelector('div[id^=\'comment_\'] > div > a > img');
 
     if (imgElement != null) {
-      final imgUrl = imgElement.attributes['src'];
+      final imgUrl = imgElement.attributes['src'] ?? '';
       if (imgUrl.isNotEmpty == true) {
         setElementData(
             tag: 'img', contentType: PostContentType.img, content: imgUrl);
@@ -477,7 +484,7 @@ class HumorunivPostElement extends PostElement {
         final regExp = RegExp(r"'(?<url>.+?)'", caseSensitive: false);
         final matchVideoUrls = regExp.allMatches(videoUrlSource);
         for (var match in matchVideoUrls) {
-          final findVideUrl = match.namedGroup('url');
+          final findVideUrl = match.namedGroup('url') ?? '';
           if (findVideUrl.toLowerCase().endsWith('.mp4') == true) {
             videoUrl = findVideUrl;
             break;
@@ -496,6 +503,52 @@ class HumorunivPostElement extends PostElement {
 
     return super.prefixParseTableTag(targetElement);
   }
+
+  String _findAudioUrl(String content) {
+    if (content.startsWith('var mp3str') == false) {
+      return '';
+    }
+
+    final alphabetRegexp = RegExp(r'"(?<alphabet>.?)\+?"');
+    final alphabetMaches = alphabetRegexp.allMatches(content);
+
+    var audioHtmlContent = '';
+    for (var alphabetMache in alphabetMaches) {
+      audioHtmlContent += alphabetMache.namedGroup('alphabet') ?? '';
+    }
+
+    final audioTagRegexp = RegExp(r'<audio.+</audio>');
+    final autioTagMatch = audioTagRegexp.firstMatch(audioHtmlContent);
+    if (autioTagMatch == null) {
+      return '';
+    }
+
+    print(autioTagMatch.group(0));
+
+    final sourceRegExp = RegExp(r"<source src='(?<url>.+?)'");
+    final sourceMatch = sourceRegExp.firstMatch(autioTagMatch.group(0) ?? '');
+    if (sourceMatch == null) {
+      return '';
+    }
+
+    return sourceMatch.namedGroup('url') ?? '';
+  }
+
+  @override
+  PrefixParseResult prefixParseText(String content) {
+    final audioUrl = _findAudioUrl(content);
+    if (audioUrl.isEmpty == true) {
+      return super.prefixParseText(content);
+    }
+
+    setElementData(
+      tag: 'audio',
+      contentType: PostContentType.audio,
+      content: audioUrl,
+    );
+
+    return PrefixParseResult.keep_going;
+  }
 }
 
 /// 웃긴대학 Comment Unit Parsing하기
@@ -510,7 +563,7 @@ class HumorunivPostCommentItem extends PostCommentItem {
   @override
   String parseAuthorIconUrl(Element element) {
     final authorIconImgElement = element.querySelector('td img.hu_icon');
-    return authorIconImgElement.attributes['src'] ?? '';
+    return authorIconImgElement?.attributes['src'] ?? '';
   }
 
   @override
@@ -538,8 +591,7 @@ class HumorunivPostCommentItem extends PostCommentItem {
   String parseCommentWriteDatetime(Element element) {
     final commentWriteDatetimeElement =
         element.querySelector('td > span.list_date');
-    final commentWriteDatetime =
-        commentWriteDatetimeElement?.text?.trim() ?? '';
+    final commentWriteDatetime = commentWriteDatetimeElement?.text.trim() ?? '';
     return DateTime.tryParse(commentWriteDatetime)?.toString() ?? '';
   }
 
@@ -549,7 +601,7 @@ class HumorunivPostCommentItem extends PostCommentItem {
   }
 
   @override
-  Element getCommentContentElement(Element element) {
+  Element? getCommentContentElement(Element element) {
     final tdElements = element.querySelectorAll('td');
     if (tdElements.length < 3) {
       return null;
@@ -560,7 +612,9 @@ class HumorunivPostCommentItem extends PostCommentItem {
 
 class HumorunivCommentContent extends CommentContent {
   @override
-  CommentContent createPostElement({PostContentType contentType}) {
+  CommentContent createCommentContent({
+    PostContentType contentType = PostContentType.none,
+  }) {
     return HumorunivCommentContent()..setContentData(contentType: contentType);
   }
 
@@ -575,7 +629,7 @@ class HumorunivCommentContent extends CommentContent {
     final regExp = RegExp(r"'(?<url>.+?)'", caseSensitive: false);
     final matchVideoUrls = regExp.allMatches(hrefSource);
     for (var match in matchVideoUrls) {
-      final findVideUrl = match.namedGroup('url');
+      final findVideUrl = match.namedGroup('url') ?? '';
       if (findVideUrl.toLowerCase().endsWith('.mp4') == true) {
         return findVideUrl;
       }
@@ -588,7 +642,7 @@ class HumorunivCommentContent extends CommentContent {
     if (targetElement.classes.contains('comment_img_div')) {
       // case 1. 동영상인지 체크
       final videoUrl = _findVideoUrl(targetElement);
-      if (videoUrl != null && videoUrl.isNotEmpty == true) {
+      if (videoUrl.isNotEmpty == true) {
         setContentData(
           tag: 'video',
           contentType: PostContentType.video,
@@ -602,10 +656,6 @@ class HumorunivCommentContent extends CommentContent {
   }
 
   String _findAudioUrl(String onclickSource) {
-    if (onclickSource == null) {
-      return '';
-    }
-
     final sourceRegexp =
         RegExp(r'^javascript:comment_mp3\([0-9]+,(?<url>.+)\);$');
 
@@ -614,16 +664,13 @@ class HumorunivCommentContent extends CommentContent {
       return '';
     }
 
-    var audioUrlSource = matched.namedGroup('url');
+    var audioUrlSource = matched.namedGroup('url') ?? '';
     final alphabetRegexp = RegExp(r'"(?<alphabet>.?)\+?"');
     final alphabetMaches = alphabetRegexp.allMatches(audioUrlSource);
-    if (alphabetMaches == null) {
-      return '';
-    }
 
     var audioUrl = '';
     for (var alphabetMache in alphabetMaches) {
-      audioUrl += alphabetMache.namedGroup('alphabet');
+      audioUrl += alphabetMache.namedGroup('alphabet') ?? '';
     }
     return audioUrl;
   }

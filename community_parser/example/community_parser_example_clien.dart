@@ -1,5 +1,3 @@
-import 'package:html/parser.dart' as html_parser;
-
 import 'package:community_parser/community_parser.dart';
 
 Future _parsePostListItems<T extends PostListItemParser>() async {
@@ -10,7 +8,7 @@ Future _parsePostListItems<T extends PostListItemParser>() async {
 
   print('list count = ${list.length}');
 
-  final index = 0;
+  final index = 3;
   if (list.isNotEmpty) {
     print('postId = ${list[index].postId}');
     print('postBodyUrl = ${list[index].postBodyUrl}');
@@ -27,15 +25,13 @@ Future _parsePostListItems<T extends PostListItemParser>() async {
 }
 
 Future _parsePostListItemFromBody<T extends PostListItemParser>() async {
-  //var targetUrl = 'read.html?table=pds&pg=0&number=1057811';
-  //var targetUrl = 'read.html?table=pds&number=1057769';
-  //var targetUrl = 'read.html?table=pds&number=1057784';
-  var targetUrl = '16062550';
+  var targetUrl = '16174628';
 
   var result = await PostListParser.parseFromPostBody<T>(
     targetUrl,
     subUrl: 'board/park',
   );
+
   if (result == null) {
     return;
   }
@@ -62,7 +58,7 @@ Future _parserPostBody<T extends PostElement>() async {
 
   // case 3. youtube 첨부 (<p>youtube 주소만 표시??</p>)
   //var targetBodyUrl = '325087309';
-  var targetBodyUrl = '16062550';
+  var targetBodyUrl = '16181495';
 
   // case 4. youtube 첨부
   //var targetBodyUrl = '325076082';
@@ -80,10 +76,9 @@ Future _parserPostBody<T extends PostElement>() async {
 }
 
 Future _parsePostComments<T extends PostCommentItem>() async {
-  var targetPostId = '16062550';
-
-  var sw = Stopwatch();
-  sw.start();
+  //var targetPostId = '16181145';
+  //var targetPostId = '16181466';
+  var targetPostId = '16181465';
 
   var result = await PostCommentParser.parseForPage<T>(
     targetPostId,
@@ -100,15 +95,13 @@ Future _parsePostComments<T extends PostCommentItem>() async {
     print('commentBadCount = ${commentItem.commentBadCount}');
     print('commentWriteDatetime = ${commentItem.commentWriteDatetime}');
 
-    commentItem.commentContent.printContent();
+    commentItem.commentContent!.printContent();
   };
 
   for (var e in result) {
     printFunc(e);
     print('================');
   }
-
-  print('${sw.elapsedMilliseconds} ms');
 }
 
 void exampleClienPrint() async {

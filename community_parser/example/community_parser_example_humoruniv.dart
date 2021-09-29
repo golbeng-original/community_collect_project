@@ -68,7 +68,11 @@ Future _parserPostBody<T extends PostElement>() async {
 
   //var targetBodyUrl = 'read.html?table=pds&pg=2&number=1057489';
 
-  var targetPostId = '1057489';
+  //case 4. 사운드 파일
+  //var targetPostId = '1065088';
+
+  //case 5. 숨김 콘텐츠
+  var targetPostId = '1066984';
   var targetQuery = {'table': 'pds'};
 
   var result = await PostParser.parse<T>(targetPostId, query: targetQuery);
@@ -93,7 +97,7 @@ Future _parsePostComments<T extends PostCommentItem>() async {
     print('commentBadCount = ${commentItem.commentBadCount}');
     print('commentWriteDatetime = ${commentItem.commentWriteDatetime}');
 
-    commentItem.commentContent.printContent();
+    commentItem.commentContent?.printContent();
   };
 
   for (var e in result) {
@@ -103,7 +107,6 @@ Future _parsePostComments<T extends PostCommentItem>() async {
 }
 
 void exampleHumorunivPrint() async {
-  /*
   print('> parsePostListItems ======================');
   await _parsePostListItems<HumorunivPostListItemParser>();
   print('===========================================');
@@ -115,7 +118,7 @@ void exampleHumorunivPrint() async {
   print('> parserPostBody ==========================');
   await _parserPostBody<HumorunivPostElement>();
   print('===========================================');
-  */
+
   print('> parsePostComments =======================');
   await _parsePostComments<HumorunivPostCommentItem>();
   print('===========================================');

@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:meta/meta.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import 'package:cp949/cp949.dart' as cp949;
 import 'package:http/http.dart' as http;
 
@@ -10,14 +10,18 @@ enum StatusType {
   BodyException,
 }
 
+/// Document의 body 정보 및 Cookie 내용을 가져온다.
+/// - Header 내용 중 Encoding 정보를 찾아서 cp949, utf-8 Decoding 할지를 정한다.
 class DocumentStatus {
   StatusType statueType = StatusType.NotFound;
   String documentBody = '';
-  Exception exception;
+  final Exception? exception;
+
+  Map<String, String> cookies = {};
 
   DocumentStatus({
-    @required this.statueType,
-    @required this.documentBody,
+    required this.statueType,
+    required this.documentBody,
     this.exception,
   });
 
@@ -64,7 +68,7 @@ String _findDocumentLanguage(http.Response response) {
 
     final matched = _charsetReg.firstMatch(contentTypeValue ?? '');
     if (matched != null) {
-      language = matched.namedGroup('language');
+      language = matched.namedGroup('language') ?? '';
       return language.toLowerCase();
     }
   }
@@ -72,7 +76,7 @@ String _findDocumentLanguage(http.Response response) {
   // 2. meta charset에서 찾기
   final matchedMetaCharset = _metaCharsetReg.firstMatch(response.body);
   if (matchedMetaCharset != null) {
-    language = matchedMetaCharset.namedGroup('language');
+    language = matchedMetaCharset.namedGroup('language') ?? '';
     return language.toLowerCase();
   }
 
@@ -86,10 +90,10 @@ String _findDocumentLanguage(http.Response response) {
       continue;
     }
 
-    final metaValue = match.namedGroup('value');
+    final metaValue = match.namedGroup('value') ?? '';
     final languageMatch = _contentCharsetReg.firstMatch(metaValue);
     if (languageMatch != null) {
-      language = languageMatch.namedGroup('language');
+      language = languageMatch.namedGroup('language') ?? '';
       return language.toLowerCase();
     }
     break;
@@ -98,12 +102,18 @@ String _findDocumentLanguage(http.Response response) {
   return language;
 }
 
-Future<DocumentStatus> getDocument(Uri uri) async {
-  var resposne = await http.get(uri);
+Future<DocumentStatus> getDocument(
+  Uri uri, {
+  Map<String, String>? headers,
+}) async {
+  var resposne = await http.get(uri, headers: headers);
 
   if (resposne.statusCode != 200) {
     return DocumentStatus.notFoundStatus();
   }
+
+  // 쿠키 정보 가져오기
+  var cookieMap = _getCookie(resposne.headers);
 
   try {
     final language = _findDocumentLanguage(resposne);
@@ -118,8 +128,82 @@ Future<DocumentStatus> getDocument(Uri uri) async {
         break;
     }
 
-    return DocumentStatus.success(body);
+    var documentStatus = DocumentStatus.success(body);
+    documentStatus.cookies = cookieMap;
+
+    return documentStatus;
   } on Exception catch (e) {
     return DocumentStatus.exception(e);
   }
+}
+
+Future<DocumentStatus> headRequest(
+  Uri uri, {
+  Map<String, String>? headers,
+}) async {
+  var resposne = await http.head(uri, headers: headers);
+
+  if (resposne.statusCode != 200) {
+    return DocumentStatus.notFoundStatus();
+  }
+
+  // 쿠키 정보 가져오기
+  var cookieMap = _getCookie(resposne.headers);
+
+  var documentStatus = DocumentStatus.success('');
+  documentStatus.cookies = cookieMap;
+
+  return documentStatus;
+}
+
+final domainRegexp = RegExp(r'domain=(.+?),(?<kv>.+)');
+final pathRegexp = RegExp(r'path=(.+?),(?<kv>.+)');
+
+Map<String, String> _getCookie(Map<String, String>? header) {
+  if (header == null) {
+    return <String, String>{};
+  }
+
+  if (header.containsKey('set-cookie') == false) {
+    return <String, String>{};
+  }
+
+  var cookieMap = <String, String>{};
+
+  var cookieText = header['set-cookie'] ?? '';
+  var cookieSplit = cookieText.split(';');
+
+  for (var cookieElement in cookieSplit) {
+    var matched = domainRegexp.firstMatch(cookieElement);
+    if (matched != null) {
+      var cookieSource = matched.namedGroup('kv') ?? '';
+      var cookieKeyValue = _getCookieValue(cookieSource);
+
+      if (cookieKeyValue != null) {
+        cookieMap[cookieKeyValue.key] = cookieKeyValue.value;
+      }
+      continue;
+    }
+
+    matched = pathRegexp.firstMatch(cookieElement);
+    if (matched != null) {
+      var cookieSource = matched.namedGroup('kv') ?? '';
+      var cookieKeyValue = _getCookieValue(cookieSource);
+      if (cookieKeyValue != null) {
+        cookieMap[cookieKeyValue.key] = cookieKeyValue.value;
+      }
+      continue;
+    }
+  }
+
+  return cookieMap;
+}
+
+MapEntry<String, String>? _getCookieValue(String cookieValue) {
+  var keyValue = cookieValue.split('=');
+  if (keyValue.length != 2) {
+    return null;
+  }
+
+  return MapEntry(keyValue[0], keyValue[1]);
 }

@@ -67,8 +67,8 @@ class TodayHumorComment {
     return memoNameSpan;
   }
 
-  Element _toAuthorIcon(Document document) {
-    Element tag;
+  Element? _toAuthorIcon(Document document) {
+    Element? tag;
     if (authorIcon == 'null' || authorIcon == 'default') {
       tag = document.createElement('span');
       tag.classes.add('memoMemberStar');
@@ -115,20 +115,20 @@ class TodayHumorComment {
 
     todayHumorComment.id = int.tryParse(json['no']) ?? 0;
 
-    var parentId = json['parent_memo_no'];
+    var parentId = json['parent_memo_no'] ?? '';
     if (parentId is String) {
       todayHumorComment.parentId = int.tryParse(parentId) ?? 0;
     }
 
-    todayHumorComment.authorName = json['name'];
-    todayHumorComment.authorIcon = json['ms_icon'];
+    todayHumorComment.authorName = json['name'] ?? '';
+    todayHumorComment.authorIcon = json['ms_icon'] ?? '';
 
     todayHumorComment.goodCount = int.tryParse(json['ok']) ?? 0;
-    todayHumorComment.writeDateTime = json['date'];
+    todayHumorComment.writeDateTime = json['date'] ?? '';
 
-    todayHumorComment.content = json['memo'];
+    todayHumorComment.content = json['memo'] ?? '';
 
-    todayHumorComment.isDelete = json['is_del'];
+    todayHumorComment.isDelete = json['is_del'] ?? false;
 
     return todayHumorComment;
   }
@@ -136,20 +136,23 @@ class TodayHumorComment {
 
 /// 오늘의 유머 SiteMeta
 class TodayHumorSiteMeta extends SiteMeta {
-  TodayHumorSiteMeta() : super(startPageIndex: 1);
+  TodayHumorSiteMeta() : super(siteDomain: 'todayhumor', startPageIndex: 1);
 
   @override
   bool isErrorListPage(Document document) {
     final trElements =
         document.querySelectorAll('table.table_list > tbody > tr');
-    final trCount = trElements?.length ?? 0;
 
-    return trCount <= 4 ? true : false;
+    return trElements.length <= 4 ? true : false;
   }
 
   @override
   bool isErrorPostPage(Document document) {
-    return document.body.children.length <= 1 ? true : false;
+    if (document.body == null) {
+      return false;
+    }
+
+    return document.body!.children.length <= 1 ? true : false;
   }
 
   @override
@@ -158,7 +161,10 @@ class TodayHumorSiteMeta extends SiteMeta {
   }
 
   @override
-  String getAdjustListUrl(int pageIndex, {String subUrl}) {
+  String getAdjustListUrl(
+    int pageIndex, {
+    String subUrl = '',
+  }) {
     // query list
     // table={string}
 
@@ -168,7 +174,7 @@ class TodayHumorSiteMeta extends SiteMeta {
   @override
   String getAdjustPostBodyUrl(
     String postId, {
-    String subUrl,
+    String subUrl = '',
   }) {
     return 'http://www.todayhumor.co.kr/board/view.php?no=$postId';
   }
@@ -177,12 +183,12 @@ class TodayHumorSiteMeta extends SiteMeta {
   String getSpecificCommentUrl(
     String postId, {
     String subUrl = '',
-    Map<String, String> query,
+    Map<String, String>? query,
     bool needQuestionMark = false,
   }) {
     var parentTable = '';
-    if (query.containsKey('table')) {
-      parentTable = query['table'];
+    if (query != null && query.containsKey('table')) {
+      parentTable = query['table'] ?? '';
     }
 
     var url =
@@ -200,7 +206,7 @@ class TodayHumorSiteMeta extends SiteMeta {
   }
 
   @override
-  Element getPostRootQuery(Document document) {
+  Element? getPostRootQuery(Document document) {
     final postBodyElement =
         document.querySelector('div.contentContainer > div.viewContent');
 
@@ -208,7 +214,7 @@ class TodayHumorSiteMeta extends SiteMeta {
   }
 
   @override
-  Document getCommentDocument(String documentString) {
+  Document getCommentDocument(Document commentDocument) {
     final commentHtml = '''
     <html>
     <head>
@@ -222,10 +228,14 @@ class TodayHumorSiteMeta extends SiteMeta {
 
     var document = Document.html(commentHtml);
 
+    if (commentDocument.body == null) {
+      return document;
+    }
+
     var commentList = <TodayHumorComment>[];
 
     try {
-      var commentJson = jsonDecode(documentString);
+      var commentJson = jsonDecode(commentDocument.body!.text);
 
       var memos = commentJson['memos'];
       for (var memo in memos) {
@@ -236,7 +246,7 @@ class TodayHumorSiteMeta extends SiteMeta {
       return document;
     }
 
-    var commentConatiner = document.querySelector('#memoContainerDiv');
+    var commentConatiner = document.querySelector('#memoContainerDiv')!;
 
     var parentElements = <int, Element>{};
     var removeComments = <TodayHumorComment>[];
@@ -277,7 +287,7 @@ class TodayHumorSiteMeta extends SiteMeta {
         continue;
       }
 
-      var parentElement = parentElements[comment.parentId];
+      var parentElement = parentElements[comment.parentId]!;
 
       try {
         var element = comment.toElement(document);
@@ -291,7 +301,7 @@ class TodayHumorSiteMeta extends SiteMeta {
     var sortKeys = parentElements.keys.toList();
     sortKeys.sort();
     for (var key in sortKeys) {
-      var element = parentElements[key];
+      var element = parentElements[key]!;
 
       commentConatiner.append(element);
     }
@@ -309,7 +319,7 @@ class TodayHumorSiteMeta extends SiteMeta {
     var commentList = <Element>[];
     var firstCommentElements =
         commentRootElement.querySelectorAll('div.memoWrapperDiv');
-    if (firstCommentElements == null) {
+    if (firstCommentElements.isEmpty) {
       return <Element>[];
     }
 
@@ -325,7 +335,7 @@ class TodayHumorSiteMeta extends SiteMeta {
   }
 
   @override
-  Element getPostItemFromBodyRootQuery(Document document) {
+  Element? getPostItemFromBodyRootQuery(Document document) {
     return document
         .querySelector('div.writerInfoContainer > div.writerInfoContents');
   }
@@ -364,7 +374,7 @@ class TodayHumorPostListItemParser extends PostListItemParser {
       return '';
     }
 
-    return matched.namedGroup('postId');
+    return matched.namedGroup('postId') ?? '';
   }
 
   @override
@@ -384,7 +394,7 @@ class TodayHumorPostListItemParser extends PostListItemParser {
       return '';
     }
 
-    return subjectElement?.text ?? '';
+    return subjectElement.text;
   }
 
   @override
@@ -392,7 +402,7 @@ class TodayHumorPostListItemParser extends PostListItemParser {
     final commentCountElement =
         element.querySelector('td.subject > span.list_memo_count_span');
 
-    var commentCountStr = commentCountElement?.text?.trim() ?? '';
+    var commentCountStr = commentCountElement?.text.trim() ?? '';
     commentCountStr = commentCountStr.replaceAll('[', '');
     commentCountStr = commentCountStr.replaceAll(']', '');
 
@@ -435,11 +445,11 @@ class TodayHumorPostListItemParser extends PostListItemParser {
       return '';
     }
 
-    final year = int.tryParse(matched.namedGroup('y'));
-    final month = int.tryParse(matched.namedGroup('m'));
-    final day = int.tryParse(matched.namedGroup('d'));
-    final hour = int.tryParse(matched.namedGroup('h'));
-    final minute = int.tryParse(matched.namedGroup('M'));
+    final year = int.tryParse(matched.namedGroup('y') ?? '') ?? 0;
+    final month = int.tryParse(matched.namedGroup('m') ?? '') ?? 0;
+    final day = int.tryParse(matched.namedGroup('d') ?? '') ?? 0;
+    final hour = int.tryParse(matched.namedGroup('h') ?? '') ?? 0;
+    final minute = int.tryParse(matched.namedGroup('M') ?? '') ?? 0;
 
     //final dateTime = DateTime(2000 + year, month, day, hour, minute);
     return '${2000 + year}-$month=$day $hour:$minute';
@@ -449,10 +459,10 @@ class TodayHumorPostListItemParser extends PostListItemParser {
 /// 오늘의 유머 게시글 리스트 아이템 Parser
 /// - 게시글 본문에서 List Unit 요소 Parsing 하기
 class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
-  TodayHumorPostListItemFromBodyParser(Document docuemnt) : super(docuemnt);
-
   bool _isFoundItemInfoDivs = false;
-  List<Element> _postItemInfoDivElements;
+  List<Element>? _postItemInfoDivElements;
+
+  TodayHumorPostListItemFromBodyParser(Document docuemnt) : super(docuemnt);
 
   void _findPostItemInfoDivs(Element element) {
     if (_isFoundItemInfoDivs == true) {
@@ -466,7 +476,11 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
   }
 
   bool _isEnableParsing() {
-    return _postItemInfoDivElements.length == 9;
+    if (_postItemInfoDivElements == null) {
+      return false;
+    }
+
+    return _postItemInfoDivElements!.length == 9;
   }
 
   @override
@@ -489,7 +503,7 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
       return '';
     }
 
-    final authorNameElement = _postItemInfoDivElements[1]
+    final authorNameElement = _postItemInfoDivElements![1]
         .querySelector('span#viewPageWriterNameSpan');
 
     if (authorNameElement == null) {
@@ -507,7 +521,7 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
       return '';
     }
 
-    final postIdStr = _postItemInfoDivElements[0].text;
+    final postIdStr = _postItemInfoDivElements![0].text;
     final postIdRegexp = RegExp(r'humordata_(?<postId>[0-9]+)');
 
     final matched = postIdRegexp.firstMatch(postIdStr);
@@ -515,7 +529,7 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
       return '';
     }
 
-    return matched.namedGroup('postId');
+    return matched.namedGroup('postId') ?? '';
   }
 
   @override
@@ -526,7 +540,7 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
       return '';
     }
 
-    var aElement = _postItemInfoDivElements[8].querySelector('a');
+    var aElement = _postItemInfoDivElements![8].querySelector('a');
     if (aElement == null) {
       return '';
     }
@@ -538,7 +552,7 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
   String parseSubject(Element element) {
     var subjectElement =
         document.querySelector('div.containerInner > div.viewSubjectDiv > div');
-    return subjectElement.text ?? '';
+    return subjectElement?.text ?? '';
   }
 
   @override
@@ -549,14 +563,14 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
       return 0;
     }
 
-    final commentCountStr = _postItemInfoDivElements[5].text;
+    final commentCountStr = _postItemInfoDivElements![5].text;
     final commentCountRegexp = RegExp(r': (?<commentCount>[0-9]+)개');
     final matched = commentCountRegexp.firstMatch(commentCountStr);
     if (matched == null) {
       return 0;
     }
 
-    return int.tryParse(matched.namedGroup('commentCount')) ?? 0;
+    return int.tryParse(matched.namedGroup('commentCount') ?? '') ?? 0;
   }
 
   @override
@@ -568,7 +582,7 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
     }
 
     final goodCountElement =
-        _postItemInfoDivElements[2].querySelector('span.view_ok_nok');
+        _postItemInfoDivElements![2].querySelector('span.view_ok_nok');
     final goodCountStr = goodCountElement?.text ?? '';
 
     return int.tryParse(goodCountStr) ?? 0;
@@ -588,14 +602,14 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
       return 0;
     }
 
-    final viewCountStr = _postItemInfoDivElements[3].text;
+    final viewCountStr = _postItemInfoDivElements![3].text;
     final viewCountRegexp = RegExp(r': (?<viewCount>[0-9]+)');
     final matched = viewCountRegexp.firstMatch(viewCountStr);
     if (matched == null) {
       return 0;
     }
 
-    return int.tryParse(matched.namedGroup('viewCount')) ?? 0;
+    return int.tryParse(matched.namedGroup('viewCount') ?? '') ?? 0;
   }
 
   @override
@@ -606,16 +620,16 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
       return '';
     }
 
-    final writeDateTimeStr = _postItemInfoDivElements[6].text;
+    final writeDateTimeStr = _postItemInfoDivElements![6].text;
     final writeDateTimeRegexp = RegExp(
         r'.?:.?(?<y>[0-9]+)/(?<M>[0-9]+)/(?<d>[0-9]+) (?<h>[0-9]+):(?<m>[0-9]+)');
     final matched = writeDateTimeRegexp.firstMatch(writeDateTimeStr);
 
-    final year = matched.namedGroup('y');
-    final month = matched.namedGroup('M');
-    final day = matched.namedGroup('d');
-    final hour = matched.namedGroup('h');
-    final minute = matched.namedGroup('m');
+    final year = matched?.namedGroup('y') ?? '';
+    final month = matched?.namedGroup('M') ?? '';
+    final day = matched?.namedGroup('d') ?? '';
+    final hour = matched?.namedGroup('h') ?? '';
+    final minute = matched?.namedGroup('m') ?? '';
 
     return '$year-$month-$day $hour:$minute';
   }
@@ -624,7 +638,9 @@ class TodayHumorPostListItemFromBodyParser extends PostListItemParser {
 /// 오늘의 유머 게시글 Parsing 결과
 class TodayHumorPostElement extends PostElement {
   @override
-  PostElement createPostElement({PostContentType contentType}) {
+  PostElement createPostElement({
+    PostContentType contentType = PostContentType.none,
+  }) {
     return TodayHumorPostElement()..setElementData(contentType: contentType);
   }
 
@@ -684,14 +700,14 @@ class TodayHumorPostCommentItem extends PostCommentItem {
       return 0;
     }
 
-    return int.tryParse(matched.namedGroup('goodCount')) ?? 0;
+    return int.tryParse(matched.namedGroup('goodCount') ?? '') ?? 0;
   }
 
   @override
   String parseCommentWriteDatetime(Element element) {
     final memoDateElement =
         element.querySelector('div.memoInfoDiv > span.memoDate');
-    var dateTimeStr = memoDateElement?.text?.trim() ?? '';
+    var dateTimeStr = memoDateElement?.text.trim() ?? '';
     dateTimeStr = dateTimeStr.replaceAll('(', '');
     dateTimeStr = dateTimeStr.replaceAll(')', '');
 
@@ -709,14 +725,16 @@ class TodayHumorPostCommentItem extends PostCommentItem {
   }
 
   @override
-  Element getCommentContentElement(Element element) {
+  Element? getCommentContentElement(Element element) {
     return element.querySelector('div.memoContent');
   }
 }
 
 class TodayHumorCommentContent extends CommentContent {
   @override
-  CommentContent createPostElement({PostContentType contentType}) {
+  CommentContent createCommentContent({
+    PostContentType contentType = PostContentType.none,
+  }) {
     return TodayHumorCommentContent()..setContentData(contentType: contentType);
   }
 

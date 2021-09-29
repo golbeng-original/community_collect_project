@@ -322,7 +322,7 @@ Url 구조
         <div id="cmt_wrap_box" class="comm_best_area">
             <table id="cmt_best_comm_table">
                 <tbody>
-                    <tr>
+                    <tr id="comment_span_[0-9]+">
                         <td>답글 베스트X</td>
                         <td>
                             <div class="id_line">

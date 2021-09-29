@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:html/dom.dart';
-import 'package:meta/meta.dart';
 import 'package:community_parser/core/parser.dart';
 import 'package:community_parser/core/content_element.dart';
 import 'package:community_parser/core/site_meta.dart';
@@ -10,6 +7,7 @@ import 'package:tuple/tuple.dart';
 class DogdripSiteMeta extends SiteMeta {
   DogdripSiteMeta()
       : super(
+          siteDomain: 'dogdrip',
           startPageIndex: 1,
           startCommentPageIndex: 1,
           isExistCommentPage: true,
@@ -28,7 +26,10 @@ class DogdripSiteMeta extends SiteMeta {
   }
 
   @override
-  String getAdjustListUrl(int pageIndex, {String subUrl}) {
+  String getAdjustListUrl(
+    int pageIndex, {
+    String subUrl = '',
+  }) {
     // query list
     // mid={string}
     // sort_index=popular
@@ -40,7 +41,7 @@ class DogdripSiteMeta extends SiteMeta {
   @override
   String getAdjustPostBodyUrl(
     String postId, {
-    String subUrl,
+    String subUrl = '',
   }) {
     return 'https://www.dogdrip.net/' + postId;
   }
@@ -53,13 +54,13 @@ class DogdripSiteMeta extends SiteMeta {
   }
 
   @override
-  Element getPostItemFromBodyRootQuery(Document document) {
+  Element? getPostItemFromBodyRootQuery(Document document) {
     final postRoot = document.querySelector('div.inner-container > div');
     return postRoot;
   }
 
   @override
-  Element getPostRootQuery(Document document) {
+  Element? getPostRootQuery(Document document) {
     final postRoot = document.querySelector('#article_1 > div');
     return postRoot;
   }
@@ -69,7 +70,7 @@ class DogdripSiteMeta extends SiteMeta {
     final commentRoot =
         document.querySelectorAll('div.comment-list > div.comment-item');
 
-    return commentRoot ?? <Element>[];
+    return commentRoot;
   }
 
   /// <default page, total page cout>
@@ -101,13 +102,13 @@ class DogdripSiteMeta extends SiteMeta {
   @override
   Uri getAdjustCommentPageUrl(
     int index, {
-    String postId,
+    String postId = '',
   }) {
     var url = 'https://www.dogdrip.net/';
 
     url += '?cpage=$index';
 
-    if (postId != null) {
+    if (postId.isNotEmpty) {
       url += '&document_srl=$postId';
     }
 
@@ -120,14 +121,14 @@ String _getPostIdFromUrl(String postUrl) {
   final case_1_match = RegExp(r'document_srl=(?<postId>[0-9]+)');
   var matched = case_1_match.firstMatch(postUrl);
   if (matched != null) {
-    return matched.namedGroup('postId');
+    return matched.namedGroup('postId') ?? '';
   }
 
   // case 2
   final case_2_match = RegExp(r'https://www.dogdrip.net/(?<postId>[0-9]+)');
   matched = case_2_match.firstMatch(postUrl);
   if (matched != null) {
-    return matched.namedGroup('postId');
+    return matched.namedGroup('postId') ?? '';
   }
 
   return '';
@@ -143,7 +144,7 @@ class DogdripPostListItemParser extends PostListItemParser {
     return element.classes.contains('notice') ? false : true;
   }
 
-  Element _getAuthorElement(Element rootElement) {
+  Element? _getAuthorElement(Element rootElement) {
     return rootElement.querySelector('td.author > a');
   }
 
@@ -156,7 +157,7 @@ class DogdripPostListItemParser extends PostListItemParser {
       return '';
     }
 
-    return authorImageSource.attributes['src'];
+    return authorImageSource.attributes['src'] ?? '';
   }
 
   @override
@@ -170,7 +171,7 @@ class DogdripPostListItemParser extends PostListItemParser {
     return authorName.trim();
   }
 
-  Element _getTitleRootElement(Element rootElement) {
+  Element? _getTitleRootElement(Element rootElement) {
     return rootElement.querySelector('td.title > span > a');
   }
 
@@ -181,7 +182,7 @@ class DogdripPostListItemParser extends PostListItemParser {
       return '';
     }
 
-    final postUrl = titleRootElement.attributes['href'];
+    final postUrl = titleRootElement.attributes['href'] ?? '';
     return _getPostIdFromUrl(postUrl);
   }
 
@@ -249,11 +250,11 @@ class DogdripPostListItemParser extends PostListItemParser {
 class DogdripPostListItemFromBodyParser extends PostListItemParser {
   DogdripPostListItemFromBodyParser(Document docuemnt) : super(docuemnt);
 
-  Element _getArticleHeadElement(Element element) {
+  Element? _getArticleHeadElement(Element element) {
     return element.querySelector('div > div.article-head');
   }
 
-  Element _getTitleToolbarElement(Element element) {
+  Element? _getTitleToolbarElement(Element element) {
     final articleHeadElement = _getArticleHeadElement(element);
     return articleHeadElement?.querySelector('div.title-toolbar');
   }
@@ -283,7 +284,7 @@ class DogdripPostListItemFromBodyParser extends PostListItemParser {
     }
 
     final authorIconElement = spans[0].querySelector('a');
-    return authorIconElement?.text?.trim() ?? '';
+    return authorIconElement?.text.trim() ?? '';
   }
 
   @override
@@ -294,7 +295,7 @@ class DogdripPostListItemFromBodyParser extends PostListItemParser {
       return '';
     }
 
-    final postUrl = postUrlElement.attributes['href'];
+    final postUrl = postUrlElement.attributes['href'] ?? '';
     return _getPostIdFromUrl(postUrl);
   }
 
@@ -307,9 +308,8 @@ class DogdripPostListItemFromBodyParser extends PostListItemParser {
   int parseCommentCount(Element element) {
     // CommentCount Element PostBodyRoot 밖에 존재한다....
 
-    final commentCountElement =
-        this.document.querySelector('div#commentbox > h4');
-    final commentCountText = commentCountElement?.text?.trim() ?? '';
+    final commentCountElement = document.querySelector('div#commentbox > h4');
+    final commentCountText = commentCountElement?.text.trim() ?? '';
 
     final commentRegExp = RegExp(r'(?<comment>[0-9]+)');
     var commentMatch = commentRegExp.firstMatch(commentCountText);
@@ -317,13 +317,13 @@ class DogdripPostListItemFromBodyParser extends PostListItemParser {
       return 0;
     }
 
-    return int.tryParse(commentMatch.namedGroup('comment')) ?? 0;
+    return int.tryParse(commentMatch.namedGroup('comment') ?? '') ?? 0;
   }
 
   @override
   int parseGoodCount(Element element) {
     var scripts = document.querySelectorAll('script');
-    if (scripts == null) {
+    if (scripts.isEmpty) {
       return 0;
     }
 
@@ -337,7 +337,7 @@ class DogdripPostListItemFromBodyParser extends PostListItemParser {
 
       final matched = goodCommetRegExp.firstMatch(script.text);
       if (matched != null) {
-        return int.tryParse(matched.namedGroup('goodCount')) ?? 0;
+        return int.tryParse(matched.namedGroup('goodCount') ?? '') ?? 0;
       }
     }
 
@@ -378,18 +378,20 @@ class DogdripPostListItemFromBodyParser extends PostListItemParser {
     }
 
     final timeElements = spans[1].querySelectorAll('span');
-    if (timeElements == null || timeElements.length != 2) {
+    if (timeElements.length != 2) {
       return '';
     }
 
-    return timeElements[1]?.text ?? '';
+    return timeElements[1].text;
   }
 }
 
 /// 개드립 게시글 Parsing 결과
 class DogdripPostElement extends PostElement {
   @override
-  PostElement createPostElement({PostContentType contentType}) {
+  PostElement createPostElement({
+    PostContentType contentType = PostContentType.container,
+  }) {
     return DogdripPostElement()..setElementData(contentType: contentType);
   }
 
@@ -400,7 +402,7 @@ class DogdripPostElement extends PostElement {
 
   @override
   PrefixParseResult prefixParseIframeTag(Element targetElement) {
-    var iFrameSource = targetElement.attributes['src'];
+    var iFrameSource = targetElement.attributes['src'] ?? '';
     if (iFrameSource.contains('youtube.com') == true) {
       setElementData(
           contentType: PostContentType.youtube, content: iFrameSource);
@@ -411,7 +413,7 @@ class DogdripPostElement extends PostElement {
   }
 
   @override
-  PostElement postfixParseDefaultTag(PostElement postElement) {
+  PostElement? postfixParseDefaultTag(PostElement postElement) {
     if (postElement.postContentType == PostContentType.text) {
       var textContent = postElement.content;
 
@@ -515,10 +517,11 @@ class DogdripPostElement extends PostElement {
 
 /// 개드립 Comment Unit parsing하기
 class DogdripPostCommentItem extends PostCommentItem {
-  Element _getAuthorElement(Element element) {
+  Element? _getAuthorElement(Element element) {
     var findElement = element.querySelector('div.comment-bar > div > h6 > a');
-    findElement ??=
-        element.querySelector('div.comment-bar-author > div > h6 > a');
+    findElement ??= element.querySelector(
+      'div.comment-bar-author > div > h6 > a',
+    );
 
     return findElement;
   }
@@ -541,45 +544,7 @@ class DogdripPostCommentItem extends PostCommentItem {
     return authorElement?.text ?? '';
   }
 
-  @override
-  String parseCommentText(Element element) {
-    final contentElements = element.querySelectorAll('.xe_content > p');
-
-    if (contentElements == null) {
-      return '';
-    }
-
-    var content = '';
-    for (var contentElement in contentElements) {
-      content += contentElement.text;
-      if (contentElements.indexOf(contentElement) <
-          contentElements.length - 1) {
-        content += '\n';
-      }
-    }
-
-    return content;
-  }
-
-  @override
-  String parseCommentImgUrl(Element element) {
-    final contentElement = element.querySelector('.xe_content > a');
-    if (contentElement == null) {
-      return '';
-    }
-
-    final style = contentElement.attributes['style'];
-    final imageUrlRegexp = RegExp(r'background-image:url\((?<url>.+)\);');
-
-    final matched = imageUrlRegexp.firstMatch(style);
-    if (matched == null) {
-      return '';
-    }
-
-    return matched.namedGroup('url');
-  }
-
-  Element _getGoodBadCountElement(Element element) {
+  Element? _getGoodBadCountElement(Element element) {
     return element.querySelector('div.comment-content div.action');
   }
 
@@ -597,7 +562,7 @@ class DogdripPostCommentItem extends PostCommentItem {
       return 0;
     }
 
-    return int.tryParse(badCountElement.text) ?? '';
+    return int.tryParse(badCountElement.text) ?? 0;
   }
 
   @override
@@ -614,7 +579,7 @@ class DogdripPostCommentItem extends PostCommentItem {
       return 0;
     }
 
-    return int.tryParse(goodCountElement.text) ?? '';
+    return int.tryParse(goodCountElement.text) ?? 0;
   }
 
   @override
@@ -623,7 +588,7 @@ class DogdripPostCommentItem extends PostCommentItem {
     timeElement ??=
         element.querySelector('div.comment-bar-author > div > span');
 
-    return timeElement?.text?.trim() ?? '';
+    return timeElement?.text.trim() ?? '';
   }
 
   @override
@@ -637,18 +602,21 @@ class DogdripPostCommentItem extends PostCommentItem {
   }
 
   @override
-  Element getCommentContentElement(Element element) {
+  Element? getCommentContentElement(Element element) {
     return element.querySelector('div.xe_content');
   }
 }
 
+/// 개드립 Comment 내용 표현
 class DogdripCommentContent extends CommentContent {
   @override
-  CommentContent createPostElement({PostContentType contentType}) {
+  CommentContent createCommentContent({
+    PostContentType contentType = PostContentType.none,
+  }) {
     return DogdripCommentContent()..setContentData(contentType: contentType);
   }
 
-  String _findImgUrl(String styleStr) {
+  String _findImgUrl(String? styleStr) {
     if (styleStr == null) {
       return '';
     }
@@ -660,14 +628,14 @@ class DogdripCommentContent extends CommentContent {
       return '';
     }
 
-    return matched.namedGroup('url');
+    return matched.namedGroup('url') ?? '';
   }
 
   @override
   PrefixParseResult prefixParseATag(Element targetElement) {
     final style = targetElement.attributes['style'];
     final imgUrl = _findImgUrl(style);
-    if (imgUrl?.isNotEmpty == true) {
+    if (imgUrl.isNotEmpty == true) {
       setContentData(
           tag: 'img', contentType: PostContentType.img, content: imgUrl);
 

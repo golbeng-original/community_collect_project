@@ -1,8 +1,13 @@
 import 'package:community_parser/community_parser.dart';
 
+final _targetQuery = {'table': 'titlewait'};
+final _targetPostId = '92190';
+
+//final _targetQuery = {'table': 'fashion'};
+//final _targetPostId = '7032';
+
 Future _parsePostListItems<T extends PostListItemParser>() async {
-  var list =
-      await PostListParser.parse<T>(query: {'mid': 'dogdrip'}, pageIndex: 0);
+  var list = await PostListParser.parse<T>(query: _targetQuery, pageIndex: 0);
 
   print('list count = ${list.length}');
 
@@ -23,12 +28,8 @@ Future _parsePostListItems<T extends PostListItemParser>() async {
 }
 
 Future _parsePostListItemFromBody<T extends PostListItemParser>() async {
-  //var targetUrl = 'read.html?table=pds&pg=0&number=1057811';
-  //var targetUrl = 'read.html?table=pds&number=1057769';
-  //var targetUrl = 'read.html?table=pds&number=1057784';
-  var targetUrl = '325087542';
-
-  var result = await PostListParser.parseFromPostBody<T>(targetUrl);
+  var result = await PostListParser.parseFromPostBody<T>(_targetPostId,
+      query: _targetQuery);
   if (result == null) {
     return;
   }
@@ -47,35 +48,13 @@ Future _parsePostListItemFromBody<T extends PostListItemParser>() async {
 }
 
 Future _parserPostBody<T extends PostElement>() async {
-  // case 1. 그림 + 글
-  //var targetBodyUrl = '325071246';
-
-  // case 2. 단순 글 blockquote 태그 있음..
-  //var targetBodyUrl = '325043232';
-
-  // case 3. youtube 첨부 (<p>youtube 주소만 표시??</p>)
-  //var targetBodyUrl = '325087309';
-  var targetBodyUrl = '325260056';
-
-  // case 4. youtube 첨부
-  //var targetBodyUrl = '325076082';
-  //var targetBodyUrl = '324912392';
-  //var targetBodyUrl = '324926766';
-
-  // case 5. link
-  //var targetBodyUrl = '325008443';
-
-  var result = await PostParser.parse<T>(targetBodyUrl);
+  var result = await PostParser.parse<T>(_targetPostId, query: _targetQuery);
   result?.printContent();
 }
 
 Future _parsePostComments<T extends PostCommentItem>() async {
-  var targetPostId = '325260056';
-
-  var sw = Stopwatch();
-  sw.start();
-
-  var result = await PostCommentParser.parseForPage<T>(targetPostId);
+  var result = await PostCommentParser.parseForSingle<T>(_targetPostId,
+      query: _targetQuery);
 
   print('comment count = ${result.length}');
 
@@ -87,31 +66,37 @@ Future _parsePostComments<T extends PostCommentItem>() async {
     print('commentBadCount = ${commentItem.commentBadCount}');
     print('commentWriteDatetime = ${commentItem.commentWriteDatetime}');
 
-    commentItem.commentContent!.printContent();
+    commentItem.commentContent?.printContent();
   };
 
   for (var e in result) {
     printFunc(e);
     print('================');
   }
-
-  print('${sw.elapsedMilliseconds} ms');
 }
 
-void exampleDogDripPrint() async {
+void exampleHumorunivP4Print() async {
   print('> parsePostListItems ======================');
-  await _parsePostListItems<DogdripPostListItemParser>();
+  await _parsePostListItems<HumorunivP4PostListItemParser>();
   print('===========================================');
 
   print('> parsePostListItemFromBody ===============');
-  await _parsePostListItemFromBody<DogdripPostListItemFromBodyParser>();
+  await _parsePostListItemFromBody<HumorunivPostListItemFromBodyParser>();
   print('===========================================');
 
   print('> parserPostBody ==========================');
-  await _parserPostBody<DogdripPostElement>();
+  await _parserPostBody<HumorunivP4PostElement>();
   print('===========================================');
 
   print('> parsePostComments =======================');
-  await _parsePostComments<DogdripPostCommentItem>();
+
+  // 대기 제목은 별도로..
+  if (_targetQuery.containsValue('titlewait')) {
+    await _parsePostComments<HumorunivTitlePostCommentItem>();
+    await _parsePostComments<HumorunivPostCommentItem>();
+  } else {
+    await _parsePostComments<HumorunivPostCommentItem>();
+  }
+
   print('===========================================');
 }

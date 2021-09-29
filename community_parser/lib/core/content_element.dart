@@ -1,4 +1,3 @@
-import 'package:community_parser/community_parser.dart';
 import 'package:html/dom.dart';
 
 enum PrefixParseResult {
@@ -39,7 +38,7 @@ abstract class PostElement {
   String _tag = '';
   String _content = '';
 
-  PostElement parent;
+  PostElement? parent;
 
   PostContentType get postContentType => _type;
   String get tag => _tag;
@@ -47,7 +46,7 @@ abstract class PostElement {
   List<PostElement> get children => _children;
 
   PostElement createPostElement({
-    PostContentType contentType,
+    PostContentType contentType = PostContentType.container,
   });
 
   void setElementData({
@@ -87,7 +86,7 @@ abstract class PostElement {
     }
   }
 
-  void parseRoot(Element rootNode) {
+  void parseRoot(Element? rootNode) {
     setElementData(contentType: PostContentType.root);
 
     if (rootNode == null) {
@@ -95,8 +94,8 @@ abstract class PostElement {
     }
 
     for (var node in rootNode.nodes) {
-      var postEmenet = createPostElement();
-      postEmenet = postEmenet?._parse(node);
+      PostElement? postEmenet = createPostElement();
+      postEmenet = postEmenet._parse(node);
 
       if (postEmenet != null) {
         postEmenet.parent = this;
@@ -107,7 +106,7 @@ abstract class PostElement {
     _postfixParseRootTag();
   }
 
-  PostElement _parse(Node rootNode) {
+  PostElement? _parse(Node rootNode) {
     if (rootNode.nodeType != Node.ELEMENT_NODE &&
         rootNode.nodeType != Node.TEXT_NODE) {
       return null;
@@ -115,15 +114,14 @@ abstract class PostElement {
 
     // TextNode Parsing
     if (rootNode.nodeType == Node.TEXT_NODE) {
-      final content = rootNode.text.trim();
+      final content = rootNode.text?.trim() ?? '';
       if (content.isEmpty) {
         return null;
       }
 
-      setElementData(
-        contentType: PostContentType.text,
-        content: content,
-      );
+      if (prefixParseText(content) == PrefixParseResult.ignore) {
+        return null;
+      }
 
       return _postfixParseTag(this);
     }
@@ -136,8 +134,8 @@ abstract class PostElement {
     }
 
     for (var node in rootNode.nodes) {
-      var postEmenet = createPostElement();
-      postEmenet = postEmenet?._parse(node);
+      PostElement? postEmenet = createPostElement();
+      postEmenet = postEmenet._parse(node);
 
       if (postEmenet != null) {
         _children.add(postEmenet);
@@ -149,12 +147,12 @@ abstract class PostElement {
 
   /// true : Skip 하위 자식 parse 생략
   PrefixParseResult _prefixParseTag(Node targetNode) {
-    var targetElement = targetNode as Element;
+    var targetElement = targetNode as Element?;
     if (targetElement == null) {
       return PrefixParseResult.keep_going;
     }
 
-    final tag = targetElement.localName.toLowerCase();
+    final tag = targetElement.localName?.toLowerCase() ?? '';
     switch (tag) {
       case 'a':
         return prefixParseATag(targetElement);
@@ -167,12 +165,17 @@ abstract class PostElement {
       case 'br':
         setElementData(tag: tag, contentType: PostContentType.new_line);
         return PrefixParseResult.keep_going;
+      case 'script':
+      case 'style':
+      case 'form':
+      case 'input':
+        return PrefixParseResult.ignore;
     }
 
     return prefixParseDefaultTag(tag, targetElement);
   }
 
-  PostElement _postfixParseTag(PostElement postElement) {
+  PostElement? _postfixParseTag(PostElement postElement) {
     switch (postElement.tag) {
       case 'a':
         return postfixParseATag(postElement);
@@ -226,17 +229,33 @@ abstract class PostElement {
     return PrefixParseResult.keep_going;
   }
 
-  //////////////////////////////////////////////////////
-  PostElement postfixParseDefaultTag(PostElement postElement) {
+  PrefixParseResult prefixParseText(String content) {
+    setElementData(
+      contentType: PostContentType.text,
+      content: content,
+    );
+
+    return PrefixParseResult.keep_going;
+  }
+
+  /// 파싱 후에 PostElement에 대한 사후 처리
+  /// - Tag가 어떤거인가에 따라 생략 여부 결정
+  PostElement? postfixParseDefaultTag(PostElement postElement) {
     if (postElement.children.length == 1 &&
         postElement.children[0].isExistContent()) {
       return postElement.children[0];
     }
 
+    if (postElement.tag != 'p' && postElement.tag != 'br') {
+      if (postElement.isExistContent() == false) {
+        return null;
+      }
+    }
+
     return postElement;
   }
 
-  PostElement postfixParseATag(PostElement postElement) {
+  PostElement? postfixParseATag(PostElement postElement) {
     // a 태그 하단에 Img 태그 하나만 있다면, img 태그로 대체
     var imgPostElements = <PostElement>[];
     for (var child in postElement.children) {
@@ -248,15 +267,14 @@ abstract class PostElement {
     if (imgPostElements.length == 1) {
       return imgPostElements[0];
     }
-
-    return postElement;
+    return postElement.isExistContent() ? postElement : null;
   }
 
   PostElement postfixParseImgTag(PostElement postElement) {
     return postElement;
   }
 
-  PostElement postfixParsePTag(PostElement postElement) {
+  PostElement? postfixParsePTag(PostElement postElement) {
     // p 태그에 어떤 표시 컨텐츠도 없으면 생략...
     if (postElement.isExistContent() == false) {
       return null;
@@ -280,7 +298,9 @@ abstract class PostElement {
     return false;
   }
 
-  bool isExistContentType({PostContentType contentType}) {
+  bool isExistContentType({
+    required PostContentType contentType,
+  }) {
     if (_type == contentType) return true;
 
     for (var child in _children) {
@@ -292,7 +312,7 @@ abstract class PostElement {
     return false;
   }
 
-  PostElement findPostElementFromTag(List<String> tag) {
+  PostElement? findPostElementFromTag(List<String> tag) {
     for (var child in _children) {
       if (tag.contains(child.tag)) {
         return child;
@@ -335,18 +355,18 @@ abstract class CommentContent {
   String _tag = '';
   String _content = '';
 
-  CommentContent parent;
+  CommentContent? parent;
 
   PostContentType get postContentType => _type;
   String get tag => _tag;
   String get content => _content;
   List<CommentContent> get children => _children;
 
-  CommentContent createPostElement({
-    PostContentType contentType,
+  CommentContent createCommentContent({
+    PostContentType contentType = PostContentType.none,
   });
 
-  void parseRoot(Element rootNode) {
+  void parseRoot(Element? rootNode) {
     setContentData(contentType: PostContentType.root);
 
     if (rootNode == null) {
@@ -354,8 +374,8 @@ abstract class CommentContent {
     }
 
     for (var node in rootNode.nodes) {
-      var postEmenet = createPostElement();
-      postEmenet = postEmenet?._parse(node);
+      CommentContent? postEmenet = createCommentContent();
+      postEmenet = postEmenet._parse(node);
 
       if (postEmenet != null) {
         postEmenet.parent = this;
@@ -371,7 +391,7 @@ abstract class CommentContent {
       return;
     }
 
-    parent.children.remove(this);
+    parent!.children.remove(this);
   }
 
   void setContentData({
@@ -389,7 +409,7 @@ abstract class CommentContent {
     String tag = '',
     String content = '',
   }) {
-    var newCommentContent = createPostElement()
+    var newCommentContent = createCommentContent()
       ..setContentData(
         contentType: contentType,
         tag: tag,
@@ -410,7 +430,7 @@ abstract class CommentContent {
     }
   }
 
-  CommentContent _parse(Node rootNode) {
+  CommentContent? _parse(Node rootNode) {
     if (rootNode.nodeType != Node.ELEMENT_NODE &&
         rootNode.nodeType != Node.TEXT_NODE) {
       return null;
@@ -418,7 +438,7 @@ abstract class CommentContent {
 
     // TextNode Parsing
     if (rootNode.nodeType == Node.TEXT_NODE) {
-      final content = rootNode.text.trim();
+      final content = rootNode.text?.trim() ?? '';
       if (content.isEmpty) {
         return null;
       }
@@ -439,8 +459,8 @@ abstract class CommentContent {
     }
 
     for (var node in rootNode.nodes) {
-      var postEmenet = createPostElement();
-      postEmenet = postEmenet?._parse(node);
+      CommentContent? postEmenet = createCommentContent();
+      postEmenet = postEmenet._parse(node);
 
       if (postEmenet != null) {
         _children.add(postEmenet);
@@ -452,12 +472,12 @@ abstract class CommentContent {
 
   /// true : Skip 하위 자식 parse 생략
   PrefixParseResult _prefixParseTag(Node targetNode) {
-    var targetElement = targetNode as Element;
+    var targetElement = targetNode as Element?;
     if (targetElement == null) {
       return PrefixParseResult.keep_going;
     }
 
-    final tag = targetElement.localName.toLowerCase();
+    final tag = targetElement.localName?.toLowerCase() ?? '';
     switch (tag) {
       case 'a':
         return prefixParseATag(targetElement);
@@ -466,12 +486,15 @@ abstract class CommentContent {
       case 'br':
         setContentData(tag: tag, contentType: PostContentType.new_line);
         return PrefixParseResult.keep_going;
+      case 'script':
+      case 'style':
+        return PrefixParseResult.ignore;
     }
 
     return prefixParseDefaultTag(tag, targetElement);
   }
 
-  CommentContent _postfixParseTag(CommentContent commentContent) {
+  CommentContent? _postfixParseTag(CommentContent commentContent) {
     switch (commentContent.tag) {
       case 'a':
         return postfixParseATag(commentContent);
@@ -489,10 +512,15 @@ abstract class CommentContent {
     return PrefixParseResult.keep_going;
   }
 
-  CommentContent postfixParseDefaultTag(CommentContent commentContent) {
+  CommentContent? postfixParseDefaultTag(CommentContent commentContent) {
     if (commentContent.children.length == 1 &&
         commentContent.children[0].isExistContent()) {
       return commentContent.children[0];
+    }
+
+    if (commentContent.tag == 'div' &&
+        commentContent.isExistContent() == false) {
+      return null;
     }
 
     return commentContent;
@@ -542,7 +570,7 @@ abstract class CommentContent {
     return commentContent;
   }
 
-  CommentContent postfixParsePTag(CommentContent commentContent) {
+  CommentContent? postfixParsePTag(CommentContent commentContent) {
     // p 태그에 어떤 표시 컨텐츠도 없으면 생략...
     if (commentContent.isExistContent() == false) {
       return null;
@@ -566,7 +594,9 @@ abstract class CommentContent {
     return false;
   }
 
-  bool isExistContentType({PostContentType contentType}) {
+  bool isExistContentType({
+    required PostContentType contentType,
+  }) {
     if (_type == contentType) return true;
 
     for (var child in _children) {

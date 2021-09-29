@@ -1,5 +1,3 @@
-import 'package:html/parser.dart' as html_parser;
-
 import 'package:community_parser/community_parser.dart';
 
 Future _parsePostListItems<T extends PostListItemParser>() async {
@@ -99,7 +97,7 @@ Future _parsePostComments<T extends PostCommentItem>() async {
     print('commentBadCount = ${commentItem.commentBadCount}');
     print('commentWriteDatetime = ${commentItem.commentWriteDatetime}');
 
-    commentItem.commentContent.printContent();
+    commentItem.commentContent?.printContent();
   };
 
   for (var e in result) {
@@ -111,7 +109,6 @@ Future _parsePostComments<T extends PostCommentItem>() async {
 }
 
 void exampleTodayHumorPrint() async {
-  /*
   print('> parsePostListItems ======================');
   await _parsePostListItems<TodayHumorPostListItemParser>();
   print('===========================================');
@@ -123,7 +120,7 @@ void exampleTodayHumorPrint() async {
   print('> parserPostBody ==========================');
   await _parserPostBody<TodayHumorPostElement>();
   print('===========================================');
-  */
+
   print('> parsePostComments =======================');
   await _parsePostComments<TodayHumorPostCommentItem>();
   print('===========================================');
